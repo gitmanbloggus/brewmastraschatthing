@@ -225,6 +225,119 @@
     .dropdown-item:last-child {
       border-bottom: none;
     }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 250px;
+      max-width: 400px;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+    .toast.success {
+      border-left: 4px solid #28a745;
+    }
+    .toast.error {
+      border-left: 4px solid #dc3545;
+    }
+    .toast.warning {
+      border-left: 4px solid #ffc107;
+    }
+    .toast.info {
+      border-left: 4px solid #007bff;
+    }
+    .toast-icon {
+      font-size: 24px;
+    }
+    .toast-message {
+      flex: 1;
+    }
+    .toast-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: white;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 90%;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .modal-message {
+      margin-bottom: 20px;
+      color: #666;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .modal-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .modal-btn.cancel {
+      background: #6c757d;
+      color: white;
+    }
+    .modal-btn.confirm {
+      background: #dc3545;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -278,7 +391,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
@@ -318,10 +431,60 @@
     let conversations = new Set();
     let allUsers = [];
 
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+      };
+      
+      toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showConfirm(title, message, onConfirm) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">${title}</div>
+          <div class="modal-message">${message}</div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Cancel</button>
+            <button class="modal-btn confirm">Delete</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.querySelector('.confirm').onclick = () => {
+        overlay.remove();
+        onConfirm();
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
+    }
+
     function showError(message) {
-      authError.textContent = message;
-      authError.style.display = 'block';
-      setTimeout(() => authError.style.display = 'none', 5000);
+      showToast(message, 'error');
     }
 
     function fakeEmail(username) {
@@ -341,19 +504,16 @@
       const usersRef = collection(db, "users");
       const snapshot = await getDocs(usersRef);
       allUsers = [];
-      snapshot.forEach(doc => {
-        const username = doc.data().username;
+      snapshot.forEach(docSnap => {
+        const username = docSnap.data().username;
         if (username !== auth.currentUser?.displayName) {
           allUsers.push(username);
         }
       });
-      console.log("Loaded users:", allUsers);
     }
 
     newDmUser.oninput = () => {
       const searchTerm = newDmUser.value.trim().toLowerCase();
-      
-      console.log("Search term:", searchTerm, "All users:", allUsers);
       
       if (searchTerm.length === 0) {
         userDropdown.style.display = 'none';
@@ -363,8 +523,6 @@
       const matches = allUsers.filter(user => 
         user.toLowerCase().includes(searchTerm)
       );
-
-      console.log("Matches:", matches);
 
       if (matches.length === 0) {
         userDropdown.innerHTML = '<div class="dropdown-item">No users found</div>';
@@ -538,40 +696,28 @@
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
       
-      console.log("Loading conversations for:", currentUser);
-      
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
-        console.log("DMs snapshot received, docs count:", snapshot.docs.length);
         const foundConversations = new Set();
         
         for (const docSnap of snapshot.docs) {
           const conversationId = docSnap.id;
-          console.log("Checking conversation:", conversationId);
           const users = conversationId.split("_");
-          console.log("Users in conversation:", users, "Current user:", currentUser);
           
           if (users.includes(currentUser)) {
-            console.log("Current user is in this conversation!");
             try {
               const messagesRef = collection(db, "dms", conversationId, "messages");
               const messagesQuery = query(messagesRef, limit(1));
               const messagesSnap = await getDocs(messagesQuery);
               
-              console.log("Messages in conversation:", messagesSnap.size);
-              
               if (!messagesSnap.empty) {
-                console.log("Adding conversation to list:", conversationId);
                 foundConversations.add(conversationId);
               }
             } catch (error) {
-              console.error("Error checking messages for", conversationId, error);
+              console.log("Error checking messages for", conversationId);
             }
-          } else {
-            console.log("Current user NOT in this conversation");
           }
         }
         
-        console.log("Total conversations found:", foundConversations.size);
         conversations = foundConversations;
         updateConversationsList();
       });
@@ -602,41 +748,6 @@
       conversationsList.appendChild(div);
     }
 
-    async function deleteConversation(conversationId) {
-      if (!confirm("Delete this conversation? This will remove all messages.")) {
-        return;
-      }
-
-      try {
-        // Delete all messages in the conversation
-        const messagesRef = collection(db, "dms", conversationId, "messages");
-        const messagesSnap = await getDocs(messagesRef);
-        
-        const deletePromises = [];
-        messagesSnap.forEach(msgDoc => {
-          deletePromises.push(msgDoc.ref.delete());
-        });
-        
-        await Promise.all(deletePromises);
-        
-        // Delete the conversation document itself
-        await doc(db, "dms", conversationId).delete();
-        
-        // Clear UI if this was the active conversation
-        if (currentConversation === conversationId) {
-          currentConversation = null;
-          dmMessages.innerHTML = '<div class="empty-state">Select a conversation or start a new one</div>';
-          dmInput.disabled = true;
-          dmSend.disabled = true;
-        }
-        
-        console.log("Conversation deleted:", conversationId);
-      } catch (error) {
-        console.error("Error deleting conversation:", error);
-        alert("Failed to delete conversation: " + error.message);
-      }
-    }
-
     function selectConversation(conversationId, element) {
       currentConversation = conversationId;
       
@@ -654,19 +765,19 @@
     startDmBtn.onclick = async () => {
       const otherUser = newDmUser.value.trim();
       if (!otherUser) {
-        alert("Please enter a username");
+        showToast("Please enter a username", "warning");
         return;
       }
 
       const currentUser = auth.currentUser.displayName;
       
       if (otherUser === currentUser) {
-        alert("You can't message yourself!");
+        showToast("You can't message yourself!", "warning");
         return;
       }
 
       if (!allUsers.includes(otherUser)) {
-        alert("User not found. Make sure the username is correct.");
+        showToast("User not found. Make sure the username is correct.", "error");
         return;
       }
 
@@ -679,7 +790,8 @@
       
       const items = conversationsList.querySelectorAll('.conversation-item');
       items.forEach(item => {
-        if (item.textContent === otherUser) {
+        const nameElem = item.querySelector('.conversation-name');
+        if (nameElem && nameElem.textContent === otherUser) {
           selectConversation(conversationId, item);
         }
       });
@@ -704,7 +816,7 @@
       const text = dmInput.value.trim();
       
       if (!currentConversation) {
-        alert("Please select a conversation first");
+        showToast("Please select a conversation first", "warning");
         return;
       }
       if (!text) return;
@@ -713,14 +825,12 @@
       const otherUser = getOtherUser(currentConversation, currentUser);
 
       try {
-        // First, create/update the conversation document itself
         await setDoc(doc(db, "dms", currentConversation), {
           users: [currentUser, otherUser],
           lastMessage: text,
           lastMessageTime: serverTimestamp()
         }, { merge: true });
 
-        // Then add the message to the subcollection
         await addDoc(collection(db, "dms", currentConversation, "messages"), {
           from: currentUser,
           to: otherUser,
@@ -728,11 +838,10 @@
           createdAt: serverTimestamp()
         });
         
-        console.log("Message sent successfully to conversation:", currentConversation);
         dmInput.value = "";
       } catch (error) {
         console.error("Error sending DM:", error);
-        alert("Failed to send DM: " + error.message);
+        showToast("Failed to send DM: " + error.message, "error");
       }
     }
 
@@ -754,6 +863,39 @@
         });
         dmMessages.scrollTop = dmMessages.scrollHeight;
       });
+    }
+
+    async function deleteConversation(conversationId) {
+      showConfirm(
+        "Delete Conversation",
+        "This will remove all messages. Are you sure?",
+        async () => {
+          try {
+            const messagesRef = collection(db, "dms", conversationId, "messages");
+            const messagesSnap = await getDocs(messagesRef);
+            
+            const deletePromises = [];
+            messagesSnap.forEach(msgDoc => {
+              deletePromises.push(deleteDoc(msgDoc.ref));
+            });
+            
+            await Promise.all(deletePromises);
+            await deleteDoc(doc(db, "dms", conversationId));
+            
+            if (currentConversation === conversationId) {
+              currentConversation = null;
+              dmMessages.innerHTML = '<div class="empty-state">Select a conversation or start a new one</div>';
+              dmInput.disabled = true;
+              dmSend.disabled = true;
+            }
+            
+            showToast("Conversation deleted", "success");
+          } catch (error) {
+            console.error("Error deleting conversation:", error);
+            showToast("Failed to delete conversation: " + error.message, "error");
+          }
+        }
+      );
     }
   </script>
 </body>
