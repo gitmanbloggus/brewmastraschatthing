@@ -44,30 +44,34 @@ function fakeEmail(username) {
 
 // Register (prevents duplicate usernames)
 registerBtn.onclick = async () => {
-  const username = usernameInput.value.trim();
-  const password = passwordInput.value;
+  try {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
 
-  if (!username || !password) return alert("Enter username + password");
+    if (!username || !password) return alert("Enter username + password");
 
-  // Check if username exists
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("username", "==", username));
-  const snap = await getDocs(q);
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+    const snap = await getDocs(q);
 
-  if (!snap.empty) {
-    return alert("Username already taken.");
+    if (!snap.empty) {
+      return alert("Username already taken.");
+    }
+
+    const email = fakeEmail(username);
+    await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(auth.currentUser, { displayName: username });
+
+    await setDoc(doc(db, "users", auth.currentUser.uid), {
+      username: username
+    });
+
+    alert("Registered successfully!");
+  } catch (error) {
+    alert("Error: " + error.message);
   }
-
-  const email = fakeEmail(username);
-  await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(auth.currentUser, { displayName: username });
-
-  await setDoc(doc(db, "users", auth.currentUser.uid), {
-    username: username
-  });
-
-  alert("Registered successfully!");
 };
+
 
 // Login
 loginBtn.onclick = async () => {
