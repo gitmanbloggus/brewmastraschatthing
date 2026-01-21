@@ -75,12 +75,17 @@ registerBtn.onclick = async () => {
 
 // Login
 loginBtn.onclick = async () => {
-  const username = usernameInput.value.trim();
-  const password = passwordInput.value;
-  const email = fakeEmail(username);
+  try {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    const email = fakeEmail(username);
 
-  await signInWithEmailAndPassword(auth, email, password);
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    alert("Login Error: " + error.message);
+  }
 };
+
 
 // Logout
 logoutBtn.onclick = async () => {
