@@ -99,6 +99,9 @@
       border-bottom: 1px solid #ddd;
       cursor: pointer;
       transition: background 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .conversation-item:hover {
       background: #e9ecef;
@@ -106,6 +109,29 @@
     .conversation-item.active {
       background: #007bff;
       color: white;
+    }
+    .conversation-name {
+      flex: 1;
+    }
+    .delete-conversation {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+    .delete-conversation:hover {
+      background: #c82333;
+    }
+    .conversation-item.active .delete-conversation {
+      background: #fff;
+      color: #dc3545;
+    }
+    .conversation-item.active .delete-conversation:hover {
+      background: #f8f9fa;
     }
     #dmMessagesContainer {
       flex: 1;
@@ -557,10 +583,58 @@
       
       const div = document.createElement("div");
       div.className = "conversation-item";
-      div.textContent = otherUser;
-      div.onclick = () => selectConversation(conversationId, div);
       
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "conversation-name";
+      nameSpan.textContent = otherUser;
+      nameSpan.onclick = () => selectConversation(conversationId, div);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete-conversation";
+      deleteBtn.textContent = "×";
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteConversation(conversationId);
+      };
+      
+      div.appendChild(nameSpan);
+      div.appendChild(deleteBtn);
       conversationsList.appendChild(div);
+    }
+
+    async function deleteConversation(conversationId) {
+      if (!confirm("Delete this conversation? This will remove all messages.")) {
+        return;
+      }
+
+      try {
+        // Delete all messages in the conversation
+        const messagesRef = collection(db, "dms", conversationId, "messages");
+        const messagesSnap = await getDocs(messagesRef);
+        
+        const deletePromises = [];
+        messagesSnap.forEach(msgDoc => {
+          deletePromises.push(msgDoc.ref.delete());
+        });
+        
+        await Promise.all(deletePromises);
+        
+        // Delete the conversation document itself
+        await doc(db, "dms", conversationId).delete();
+        
+        // Clear UI if this was the active conversation
+        if (currentConversation === conversationId) {
+          currentConversation = null;
+          dmMessages.innerHTML = '<div class="empty-state">Select a conversation or start a new one</div>';
+          dmInput.disabled = true;
+          dmSend.disabled = true;
+        }
+        
+        console.log("Conversation deleted:", conversationId);
+      } catch (error) {
+        console.error("Error deleting conversation:", error);
+        alert("Failed to delete conversation: " + error.message);
+      }
     }
 
     function selectConversation(conversationId, element) {
