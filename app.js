@@ -50,6 +50,7 @@ registerBtn.onclick = async () => {
 
     if (!username || !password) return alert("Enter username + password");
 
+    // Check if username exists
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("username", "==", username));
     const snap = await getDocs(q);
@@ -59,10 +60,15 @@ registerBtn.onclick = async () => {
     }
 
     const email = fakeEmail(username);
-    await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(auth.currentUser, { displayName: username });
 
-    await setDoc(doc(db, "users", auth.currentUser.uid), {
+    // IMPORTANT: capture the user object
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    await updateProfile(user, { displayName: username });
+
+    // IMPORTANT: use the user.uid (not auth.currentUser)
+    await setDoc(doc(db, "users", user.uid), {
       username: username
     });
 
@@ -71,6 +77,7 @@ registerBtn.onclick = async () => {
     alert("Error: " + error.message);
   }
 };
+
 
 
 // Login
