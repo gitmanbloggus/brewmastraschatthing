@@ -61,22 +61,22 @@ registerBtn.onclick = async () => {
 
     const email = fakeEmail(username);
 
-    // IMPORTANT: capture the user object
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     await updateProfile(user, { displayName: username });
 
-    // IMPORTANT: use the user.uid (not auth.currentUser)
     await setDoc(doc(db, "users", user.uid), {
       username: username
     });
 
     alert("Registered successfully!");
   } catch (error) {
+    console.error("REGISTER ERROR:", error);
     alert("Error: " + error.message);
   }
 };
+
 
 
 
