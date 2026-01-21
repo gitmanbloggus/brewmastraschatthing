@@ -48,7 +48,7 @@
       color: white;
     }
     #chat {
-      max-width: 800px;
+      max-width: 1200px;
       margin: 20px auto;
       background: white;
       padding: 20px;
@@ -72,11 +72,56 @@
       border-bottom: 2px solid #007bff;
       padding-bottom: 10px;
     }
-    #globalMessages, #dmMessages {
-      height: 250px;
+    #globalMessages {
+      height: 400px;
       overflow-y: auto;
       border: 1px solid #ddd;
       margin: 10px 0;
+      padding: 10px;
+      background: #fafafa;
+      border-radius: 5px;
+    }
+    .dm-container {
+      display: flex;
+      gap: 15px;
+      margin: 10px 0;
+    }
+    #conversationsList {
+      width: 250px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .conversation-item {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .conversation-item:hover {
+      background: #e9ecef;
+    }
+    .conversation-item.active {
+      background: #007bff;
+      color: white;
+    }
+    .conversation-item.unread {
+      font-weight: bold;
+      background: #e3f2fd;
+    }
+    #dmMessagesContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #dmMessages {
+      flex: 1;
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      margin-bottom: 10px;
       padding: 10px;
       background: #fafafa;
       border-radius: 5px;
@@ -121,6 +166,17 @@
       border-radius: 5px;
       margin: 10px 0;
     }
+    .new-dm-section {
+      padding: 10px;
+      background: #e3f2fd;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -146,14 +202,26 @@
     </div>
     
     <div class="chat-section">
-      <h2>Direct Message</h2>
-      <div class="input-group">
-        <input id="dmUser" placeholder="Recipient username" />
+      <h2>Direct Messages</h2>
+      <div class="new-dm-section">
+        <div class="input-group">
+          <input id="newDmUser" placeholder="Start new conversation with username..." />
+          <button id="startDmBtn">Start Chat</button>
+        </div>
       </div>
-      <div id="dmMessages"></div>
-      <div class="input-group">
-        <input id="dmInput" placeholder="Type a DM..." />
-        <button id="dmSend">Send DM</button>
+      <div class="dm-container">
+        <div id="conversationsList">
+          <div class="empty-state">No conversations yet</div>
+        </div>
+        <div id="dmMessagesContainer">
+          <div id="dmMessages">
+            <div class="empty-state">Select a conversation or start a new one</div>
+          </div>
+          <div class="input-group">
+            <input id="dmInput" placeholder="Type a DM..." disabled />
+            <button id="dmSend" disabled>Send</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -161,17 +229,17 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
-    authDomain: "tankaportalv2.firebaseapp.com",
-    projectId: "tankaportalv2",
-    storageBucket: "tankaportalv2.firebasestorage.app",
-    messagingSenderId: "187174097219",
-    appId: "1:187174097219:web:0987e83cd8e8d2c101dff6"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
+      authDomain: "tankaportalv2.firebaseapp.com",
+      projectId: "tankaportalv2",
+      storageBucket: "tankaportalv2.firebasestorage.app",
+      messagingSenderId: "187174097219",
+      appId: "1:187174097219:web:0987e83cd8e8d2c101dff6"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth();
@@ -189,12 +257,16 @@
     const globalMessages = document.getElementById("globalMessages");
     const globalInput = document.getElementById("globalInput");
     const globalSend = document.getElementById("globalSend");
-    const dmUser = document.getElementById("dmUser");
+    const newDmUser = document.getElementById("newDmUser");
+    const startDmBtn = document.getElementById("startDmBtn");
+    const conversationsList = document.getElementById("conversationsList");
     const dmMessages = document.getElementById("dmMessages");
     const dmInput = document.getElementById("dmInput");
     const dmSend = document.getElementById("dmSend");
 
     let currentDMListener = null;
+    let currentConversation = null;
+    let conversations = new Set();
 
     function showError(message) {
       authError.textContent = message;
@@ -204,6 +276,15 @@
 
     function fakeEmail(username) {
       return `${username}@chatapp.com`;
+    }
+
+    function getConversationId(user1, user2) {
+      return [user1, user2].sort().join("_");
+    }
+
+    function getOtherUser(conversationId, currentUser) {
+      const users = conversationId.split("_");
+      return users[0] === currentUser ? users[1] : users[0];
     }
 
     // Register
@@ -279,6 +360,7 @@
         authDiv.style.display = "none";
         chatDiv.style.display = "block";
         startGlobalChat();
+        loadConversations();
       } else {
         authDiv.style.display = "block";
         chatDiv.style.display = "none";
@@ -286,6 +368,8 @@
           currentDMListener();
           currentDMListener = null;
         }
+        conversations.clear();
+        currentConversation = null;
       }
     });
 
@@ -330,10 +414,96 @@
       }
     }
 
-    // Direct Messages
-    dmUser.onchange = () => {
-      const toUser = dmUser.value.trim();
-      if (toUser) startDM();
+    // Load all conversations for current user
+    async function loadConversations() {
+      const currentUser = auth.currentUser.displayName;
+      
+      // Query all DM collections to find conversations involving this user
+      const dmsRef = collection(db, "dms");
+      const snapshot = await getDocs(dmsRef);
+      
+      conversations.clear();
+      conversationsList.innerHTML = "";
+      
+      snapshot.forEach(docSnap => {
+        const conversationId = docSnap.id;
+        if (conversationId.includes(currentUser)) {
+          conversations.add(conversationId);
+          addConversationToList(conversationId);
+        }
+      });
+
+      if (conversations.size === 0) {
+        conversationsList.innerHTML = '<div class="empty-state">No conversations yet</div>';
+      }
+    }
+
+    function addConversationToList(conversationId) {
+      const currentUser = auth.currentUser.displayName;
+      const otherUser = getOtherUser(conversationId, currentUser);
+      
+      const div = document.createElement("div");
+      div.className = "conversation-item";
+      div.textContent = otherUser;
+      div.onclick = () => selectConversation(conversationId, div);
+      
+      conversationsList.appendChild(div);
+    }
+
+    function selectConversation(conversationId, element) {
+      currentConversation = conversationId;
+      
+      // Update active state
+      document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      element.classList.add('active');
+      element.classList.remove('unread');
+      
+      // Enable input
+      dmInput.disabled = false;
+      dmSend.disabled = false;
+      
+      // Load messages
+      startDM(conversationId);
+    }
+
+    // Start new DM
+    startDmBtn.onclick = async () => {
+      const otherUser = newDmUser.value.trim();
+      if (!otherUser) {
+        alert("Please enter a username");
+        return;
+      }
+
+      const currentUser = auth.currentUser.displayName;
+      
+      if (otherUser === currentUser) {
+        alert("You can't message yourself!");
+        return;
+      }
+
+      const conversationId = getConversationId(currentUser, otherUser);
+      
+      // Check if conversation already exists
+      if (!conversations.has(conversationId)) {
+        conversations.add(conversationId);
+        addConversationToList(conversationId);
+      }
+      
+      // Select this conversation
+      const items = conversationsList.querySelectorAll('.conversation-item');
+      items.forEach(item => {
+        if (item.textContent === otherUser) {
+          selectConversation(conversationId, item);
+        }
+      });
+      
+      newDmUser.value = "";
+    };
+
+    newDmUser.onkeypress = (e) => {
+      if (e.key === 'Enter') startDmBtn.onclick();
     };
 
     dmSend.onclick = sendDM;
@@ -342,42 +512,35 @@
     };
 
     async function sendDM() {
-      const toUser = dmUser.value.trim();
       const text = dmInput.value.trim();
       
-      if (!toUser) {
-        showError("Please enter a recipient username");
+      if (!currentConversation) {
+        alert("Please select a conversation first");
         return;
       }
       if (!text) return;
 
-      const from = auth.currentUser.displayName;
-      const id = [from, toUser].sort().join("_");
+      const currentUser = auth.currentUser.displayName;
+      const otherUser = getOtherUser(currentConversation, currentUser);
 
       try {
-        await addDoc(collection(db, "dms", id, "messages"), {
-          from,
-          to: toUser,
+        await addDoc(collection(db, "dms", currentConversation, "messages"), {
+          from: currentUser,
+          to: otherUser,
           text,
           createdAt: serverTimestamp()
         });
         dmInput.value = "";
       } catch (error) {
         console.error("Error sending DM:", error);
-        showError("Failed to send DM: " + error.message);
+        alert("Failed to send DM: " + error.message);
       }
     }
 
-    function startDM() {
-      const toUser = dmUser.value.trim();
-      if (!toUser || !auth.currentUser) return;
-
-      const from = auth.currentUser.displayName;
-      const id = [from, toUser].sort().join("_");
-
+    function startDM(conversationId) {
       if (currentDMListener) currentDMListener();
 
-      const q = query(collection(db, "dms", id, "messages"), orderBy("createdAt", "asc"));
+      const q = query(collection(db, "dms", conversationId, "messages"), orderBy("createdAt", "asc"));
       currentDMListener = onSnapshot(q, snapshot => {
         dmMessages.innerHTML = "";
         snapshot.forEach(docSnap => {
