@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 // 🔥 YOUR FIREBASE CONFIG
 const firebaseConfig = {
@@ -35,24 +35,33 @@ const dmMessages = document.getElementById("dmMessages");
 const dmInput = document.getElementById("dmInput");
 const dmSend = document.getElementById("dmSend");
 
+let currentDMListener = null;
+
 // Helper to make fake email
 function fakeEmail(username) {
   return `${username}@chatapp.com`;
 }
 
-// Register
+// Register (prevents duplicate usernames)
 registerBtn.onclick = async () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
 
   if (!username || !password) return alert("Enter username + password");
 
-  const email = fakeEmail(username);
+  // Check if username exists
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("username", "==", username));
+  const snap = await getDocs(q);
 
+  if (!snap.empty) {
+    return alert("Username already taken.");
+  }
+
+  const email = fakeEmail(username);
   await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(auth.currentUser, { displayName: username });
 
-  // Store username in Firestore
   await setDoc(doc(db, "users", auth.currentUser.uid), {
     username: username
   });
@@ -80,9 +89,11 @@ onAuthStateChanged(auth, user => {
     authDiv.style.display = "none";
     chatDiv.style.display = "block";
     startGlobalChat();
+    startDM(); // start DM listener automatically
   } else {
     authDiv.style.display = "block";
     chatDiv.style.display = "none";
+    if (currentDMListener) currentDMListener();
   }
 });
 
@@ -138,8 +149,10 @@ function startDM() {
   const from = auth.currentUser.displayName;
   const id = [from, toUser].sort().join("_");
 
+  if (currentDMListener) currentDMListener(); // remove old listener
+
   const q = query(collection(db, "dms", id, "messages"), orderBy("createdAt", "asc"));
-  onSnapshot(q, snapshot => {
+  currentDMListener = onSnapshot(q, snapshot => {
     dmMessages.innerHTML = "";
     snapshot.forEach(doc => {
       const data = doc.data();
