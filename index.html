@@ -265,6 +265,7 @@
     const dmSend = document.getElementById("dmSend");
 
     let currentDMListener = null;
+    let conversationsListener = null;
     let currentConversation = null;
     let conversations = new Set();
 
@@ -368,6 +369,10 @@
           currentDMListener();
           currentDMListener = null;
         }
+        if (conversationsListener) {
+          conversationsListener();
+          conversationsListener = null;
+        }
         conversations.clear();
         currentConversation = null;
       }
@@ -427,33 +432,39 @@
       });
     }
 
-    // Load all conversations for current user
-    async function loadConversations() {
+    // Load all conversations for current user with real-time updates
+    function loadConversations() {
       const currentUser = auth.currentUser.displayName;
-      
-      // Query all DM collections to find conversations involving this user
       const dmsRef = collection(db, "dms");
       
-      // Listen to real-time updates
-      onSnapshot(dmsRef, async snapshot => {
-        const newConversations = new Set();
+      // Listen for new conversation collections
+      conversationsListener = onSnapshot(dmsRef, async snapshot => {
+        const foundConversations = new Set();
         
         for (const docSnap of snapshot.docs) {
           const conversationId = docSnap.id;
+          
+          // Check if this user is part of the conversation
           if (conversationId.includes(currentUser)) {
-            // Check if this conversation has any messages
-            const messagesRef = collection(db, "dms", conversationId, "messages");
-            const messagesSnapshot = await getDocs(messagesRef);
-            
-            if (!messagesSnapshot.empty) {
-              newConversations.add(conversationId);
+            // Verify the conversation has messages
+            try {
+              const messagesRef = collection(db, "dms", conversationId, "messages");
+              const messagesQuery = query(messagesRef, limit(1));
+              const messagesSnap = await getDocs(messagesQuery);
+              
+              if (!messagesSnap.empty) {
+                foundConversations.add(conversationId);
+              }
+            } catch (error) {
+              console.log("Error checking messages for", conversationId);
             }
           }
         }
-
-        conversations = newConversations;
+        
+        conversations = foundConversations;
         updateConversationsList();
       });
+    }
 
     function addConversationToList(conversationId) {
       const currentUser = auth.currentUser.displayName;
@@ -505,7 +516,7 @@
       // Check if conversation already exists
       if (!conversations.has(conversationId)) {
         conversations.add(conversationId);
-        addConversationToList(conversationId);
+        updateConversationsList();
       }
       
       // Select this conversation
