@@ -321,6 +321,7 @@
           allUsers.push(username);
         }
       });
+      console.log("Loaded users:", allUsers);
     }
 
     newDmUser.oninput = () => {
@@ -511,8 +512,9 @@
         
         for (const docSnap of snapshot.docs) {
           const conversationId = docSnap.id;
+          const users = conversationId.split("_");
           
-          if (conversationId.includes(currentUser)) {
+          if (users.includes(currentUser)) {
             try {
               const messagesRef = collection(db, "dms", conversationId, "messages");
               const messagesQuery = query(messagesRef, limit(1));
