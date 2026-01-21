@@ -414,29 +414,46 @@
       }
     }
 
+    function updateConversationsList() {
+      conversationsList.innerHTML = "";
+      
+      if (conversations.size === 0) {
+        conversationsList.innerHTML = '<div class="empty-state">No conversations yet</div>';
+        return;
+      }
+
+      conversations.forEach(conversationId => {
+        addConversationToList(conversationId);
+      });
+    }
+
     // Load all conversations for current user
     async function loadConversations() {
       const currentUser = auth.currentUser.displayName;
       
       // Query all DM collections to find conversations involving this user
       const dmsRef = collection(db, "dms");
-      const snapshot = await getDocs(dmsRef);
       
-      conversations.clear();
-      conversationsList.innerHTML = "";
-      
-      snapshot.forEach(docSnap => {
-        const conversationId = docSnap.id;
-        if (conversationId.includes(currentUser)) {
-          conversations.add(conversationId);
-          addConversationToList(conversationId);
+      // Listen to real-time updates
+      onSnapshot(dmsRef, async snapshot => {
+        const newConversations = new Set();
+        
+        for (const docSnap of snapshot.docs) {
+          const conversationId = docSnap.id;
+          if (conversationId.includes(currentUser)) {
+            // Check if this conversation has any messages
+            const messagesRef = collection(db, "dms", conversationId, "messages");
+            const messagesSnapshot = await getDocs(messagesRef);
+            
+            if (!messagesSnapshot.empty) {
+              newConversations.add(conversationId);
+            }
+          }
         }
-      });
 
-      if (conversations.size === 0) {
-        conversationsList.innerHTML = '<div class="empty-state">No conversations yet</div>';
-      }
-    }
+        conversations = newConversations;
+        updateConversationsList();
+      });
 
     function addConversationToList(conversationId) {
       const currentUser = auth.currentUser.displayName;
