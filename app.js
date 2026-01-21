@@ -1,14 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
+// 🔥 YOUR FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCKEPD4fp4GSTv4lD1sKvIga9O8ImYsSHM",
+  authDomain: "tankajahariportal.firebaseapp.com",
+  projectId: "tankajahariportal",
+  storageBucket: "tankajahariportal.firebasestorage.app",
+  messagingSenderId: "547424748543",
+  appId: "1:547424748543:web:0ec55a74492ffac3b15dca"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -55,6 +56,8 @@ registerBtn.onclick = async () => {
   await setDoc(doc(db, "users", auth.currentUser.uid), {
     username: username
   });
+
+  alert("Registered successfully!");
 };
 
 // Login
