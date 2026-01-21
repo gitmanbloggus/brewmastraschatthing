@@ -107,10 +107,6 @@
       background: #007bff;
       color: white;
     }
-    .conversation-item.unread {
-      font-weight: bold;
-      background: #e3f2fd;
-    }
     #dmMessagesContainer {
       flex: 1;
       display: flex;
@@ -171,11 +167,37 @@
       background: #e3f2fd;
       border-radius: 5px;
       margin-bottom: 10px;
+      position: relative;
     }
     .empty-state {
       text-align: center;
       padding: 40px;
       color: #666;
+    }
+    #userDropdown {
+      position: absolute;
+      top: 100%;
+      left: 10px;
+      right: 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .dropdown-item {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .dropdown-item:hover {
+      background: #f0f0f0;
+    }
+    .dropdown-item:last-child {
+      border-bottom: none;
     }
   </style>
 </head>
@@ -205,9 +227,10 @@
       <h2>Direct Messages</h2>
       <div class="new-dm-section">
         <div class="input-group">
-          <input id="newDmUser" placeholder="Start new conversation with username..." />
+          <input id="newDmUser" placeholder="Start new conversation with username..." autocomplete="off" />
           <button id="startDmBtn">Start Chat</button>
         </div>
+        <div id="userDropdown"></div>
       </div>
       <div class="dm-container">
         <div id="conversationsList">
@@ -231,7 +254,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
       authDomain: "tankaportalv2.firebaseapp.com",
@@ -245,7 +267,6 @@
     const auth = getAuth();
     const db = getFirestore();
 
-    // Elements
     const authDiv = document.getElementById("auth");
     const chatDiv = document.getElementById("chat");
     const authError = document.getElementById("authError");
@@ -259,6 +280,7 @@
     const globalSend = document.getElementById("globalSend");
     const newDmUser = document.getElementById("newDmUser");
     const startDmBtn = document.getElementById("startDmBtn");
+    const userDropdown = document.getElementById("userDropdown");
     const conversationsList = document.getElementById("conversationsList");
     const dmMessages = document.getElementById("dmMessages");
     const dmInput = document.getElementById("dmInput");
@@ -268,6 +290,7 @@
     let conversationsListener = null;
     let currentConversation = null;
     let conversations = new Set();
+    let allUsers = [];
 
     function showError(message) {
       authError.textContent = message;
@@ -288,7 +311,56 @@
       return users[0] === currentUser ? users[1] : users[0];
     }
 
-    // Register
+    async function loadAllUsers() {
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      allUsers = [];
+      snapshot.forEach(doc => {
+        const username = doc.data().username;
+        if (username !== auth.currentUser?.displayName) {
+          allUsers.push(username);
+        }
+      });
+    }
+
+    newDmUser.oninput = () => {
+      const searchTerm = newDmUser.value.trim().toLowerCase();
+      
+      if (searchTerm.length === 0) {
+        userDropdown.style.display = 'none';
+        return;
+      }
+
+      const matches = allUsers.filter(user => 
+        user.toLowerCase().includes(searchTerm)
+      );
+
+      if (matches.length === 0) {
+        userDropdown.style.display = 'none';
+        return;
+      }
+
+      userDropdown.innerHTML = '';
+      matches.forEach(username => {
+        const div = document.createElement('div');
+        div.className = 'dropdown-item';
+        div.textContent = username;
+        div.onclick = () => {
+          newDmUser.value = username;
+          userDropdown.style.display = 'none';
+        };
+        userDropdown.appendChild(div);
+      });
+
+      userDropdown.style.display = 'block';
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!newDmUser.contains(e.target) && !userDropdown.contains(e.target)) {
+        userDropdown.style.display = 'none';
+      }
+    });
+
     registerBtn.onclick = async () => {
       try {
         const username = usernameInput.value.trim();
@@ -328,7 +400,6 @@
       }
     };
 
-    // Login
     loginBtn.onclick = async () => {
       try {
         const username = usernameInput.value.trim();
@@ -350,18 +421,17 @@
       }
     };
 
-    // Logout
     logoutBtn.onclick = async () => {
       await signOut(auth);
     };
 
-    // Auth state
     onAuthStateChanged(auth, user => {
       if (user) {
         authDiv.style.display = "none";
         chatDiv.style.display = "block";
         startGlobalChat();
         loadConversations();
+        loadAllUsers();
       } else {
         authDiv.style.display = "block";
         chatDiv.style.display = "none";
@@ -375,10 +445,10 @@
         }
         conversations.clear();
         currentConversation = null;
+        allUsers = [];
       }
     });
 
-    // Global Chat
     function startGlobalChat() {
       const q = query(collection(db, "globalMessages"), orderBy("createdAt", "asc"));
       onSnapshot(q, snapshot => {
@@ -432,21 +502,17 @@
       });
     }
 
-    // Load all conversations for current user with real-time updates
     function loadConversations() {
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
       
-      // Listen for new conversation collections
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
         const foundConversations = new Set();
         
         for (const docSnap of snapshot.docs) {
           const conversationId = docSnap.id;
           
-          // Check if this user is part of the conversation
           if (conversationId.includes(currentUser)) {
-            // Verify the conversation has messages
             try {
               const messagesRef = collection(db, "dms", conversationId, "messages");
               const messagesQuery = query(messagesRef, limit(1));
@@ -481,22 +547,17 @@
     function selectConversation(conversationId, element) {
       currentConversation = conversationId;
       
-      // Update active state
       document.querySelectorAll('.conversation-item').forEach(item => {
         item.classList.remove('active');
       });
       element.classList.add('active');
-      element.classList.remove('unread');
       
-      // Enable input
       dmInput.disabled = false;
       dmSend.disabled = false;
       
-      // Load messages
       startDM(conversationId);
     }
 
-    // Start new DM
     startDmBtn.onclick = async () => {
       const otherUser = newDmUser.value.trim();
       if (!otherUser) {
@@ -511,15 +572,18 @@
         return;
       }
 
+      if (!allUsers.includes(otherUser)) {
+        alert("User not found. Make sure the username is correct.");
+        return;
+      }
+
       const conversationId = getConversationId(currentUser, otherUser);
       
-      // Check if conversation already exists
       if (!conversations.has(conversationId)) {
         conversations.add(conversationId);
         updateConversationsList();
       }
       
-      // Select this conversation
       const items = conversationsList.querySelectorAll('.conversation-item');
       items.forEach(item => {
         if (item.textContent === otherUser) {
@@ -528,10 +592,14 @@
       });
       
       newDmUser.value = "";
+      userDropdown.style.display = 'none';
     };
 
     newDmUser.onkeypress = (e) => {
-      if (e.key === 'Enter') startDmBtn.onclick();
+      if (e.key === 'Enter') {
+        userDropdown.style.display = 'none';
+        startDmBtn.onclick();
+      }
     };
 
     dmSend.onclick = sendDM;
