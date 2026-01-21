@@ -327,6 +327,8 @@
     newDmUser.oninput = () => {
       const searchTerm = newDmUser.value.trim().toLowerCase();
       
+      console.log("Search term:", searchTerm, "All users:", allUsers);
+      
       if (searchTerm.length === 0) {
         userDropdown.style.display = 'none';
         return;
@@ -336,8 +338,11 @@
         user.toLowerCase().includes(searchTerm)
       );
 
+      console.log("Matches:", matches);
+
       if (matches.length === 0) {
-        userDropdown.style.display = 'none';
+        userDropdown.innerHTML = '<div class="dropdown-item">No users found</div>';
+        userDropdown.style.display = 'block';
         return;
       }
 
@@ -507,28 +512,40 @@
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
       
+      console.log("Loading conversations for:", currentUser);
+      
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
+        console.log("DMs snapshot received, docs count:", snapshot.docs.length);
         const foundConversations = new Set();
         
         for (const docSnap of snapshot.docs) {
           const conversationId = docSnap.id;
+          console.log("Checking conversation:", conversationId);
           const users = conversationId.split("_");
+          console.log("Users in conversation:", users, "Current user:", currentUser);
           
           if (users.includes(currentUser)) {
+            console.log("Current user is in this conversation!");
             try {
               const messagesRef = collection(db, "dms", conversationId, "messages");
               const messagesQuery = query(messagesRef, limit(1));
               const messagesSnap = await getDocs(messagesQuery);
               
+              console.log("Messages in conversation:", messagesSnap.size);
+              
               if (!messagesSnap.empty) {
+                console.log("Adding conversation to list:", conversationId);
                 foundConversations.add(conversationId);
               }
             } catch (error) {
-              console.log("Error checking messages for", conversationId);
+              console.error("Error checking messages for", conversationId, error);
             }
+          } else {
+            console.log("Current user NOT in this conversation");
           }
         }
         
+        console.log("Total conversations found:", foundConversations.size);
         conversations = foundConversations;
         updateConversationsList();
       });
