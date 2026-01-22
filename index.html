@@ -5,30 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat App</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #000000;
+      color: #dcddde;
+      overflow: hidden;
+      height: 100vh;
     }
     #auth {
       max-width: 400px;
       margin: 50px auto;
-      background: white;
+      background: #1a1a1a;
       padding: 30px;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 20px rgba(255,0,0,0.2);
+      border: 1px solid #2a2a2a;
     }
     #auth h2 {
       margin-top: 0;
+      margin-bottom: 20px;
+      color: #ff3333;
+      text-align: center;
     }
     #auth input {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
-      border: 1px solid #ddd;
+      border: 1px solid #333;
       border-radius: 5px;
-      box-sizing: border-box;
+      background: #0a0a0a;
+      color: #e0e0e0;
+    }
+    #auth input:focus {
+      outline: none;
+      border-color: #ff3333;
     }
     #auth button {
       width: 48%;
@@ -38,201 +53,409 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 14px;
+      transition: all 0.3s;
     }
     #loginBtn {
-      background: #007bff;
+      background: #ff3333;
       color: white;
+    }
+    #loginBtn:hover {
+      background: #ff5555;
     }
     #registerBtn {
-      background: #28a745;
+      background: #333;
       color: white;
+      border: 1px solid #ff3333;
+    }
+    #registerBtn:hover {
+      background: #ff3333;
     }
     #chat {
-      max-width: 1200px;
-      margin: 20px auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: none;
+      height: 100vh;
+      flex-direction: row;
     }
-    #logoutBtn {
-      float: right;
-      padding: 8px 16px;
-      background: #dc3545;
+    .sidebar {
+      width: 280px;
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #0a0a0a;
+    }
+    .sidebar-header {
+      padding: 15px;
+      background: #0a0a0a;
+      border-bottom: 1px solid #000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header h3 {
+      color: #ff3333;
+      font-size: 16px;
+    }
+    .new-dm-btn {
+      background: #ff3333;
       color: white;
       border: none;
-      border-radius: 5px;
+      padding: 6px 12px;
+      border-radius: 4px;
       cursor: pointer;
+      font-size: 13px;
+      transition: background 0.3s;
     }
-    .chat-section {
-      margin: 20px 0;
-      clear: both;
+    .new-dm-btn:hover {
+      background: #ff5555;
     }
-    .chat-section h2 {
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 10px;
-    }
-    #globalMessages {
-      height: 400px;
+    .conversations-container {
+      flex: 1;
       overflow-y: auto;
-      border: 1px solid #ddd;
-      margin: 10px 0;
-      padding: 10px;
-      background: #fafafa;
-      border-radius: 5px;
-    }
-    .dm-container {
-      display: flex;
-      gap: 15px;
-      margin: 10px 0;
-    }
-    #conversationsList {
-      width: 250px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      background: #fafafa;
-      max-height: 400px;
-      overflow-y: auto;
+      padding: 8px;
     }
     .conversation-item {
-      padding: 12px;
-      border-bottom: 1px solid #ddd;
+      padding: 10px 12px;
+      margin: 2px 0;
+      border-radius: 6px;
       cursor: pointer;
       transition: background 0.2s;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      color: #b9bbbe;
     }
     .conversation-item:hover {
-      background: #e9ecef;
+      background: #2a2a2a;
+      color: #dcddde;
     }
     .conversation-item.active {
-      background: #007bff;
+      background: #ff3333;
       color: white;
+    }
+    .conversation-info {
+      flex: 1;
+      min-width: 0;
     }
     .conversation-name {
-      flex: 1;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .conversation-members {
+      font-size: 12px;
+      opacity: 0.7;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .delete-conversation {
-      background: #dc3545;
-      color: white;
+      background: transparent;
+      color: #b9bbbe;
       border: none;
       padding: 4px 8px;
       border-radius: 3px;
       cursor: pointer;
-      font-size: 12px;
-      margin-left: 8px;
+      font-size: 16px;
+      transition: all 0.3s;
+      opacity: 0;
+    }
+    .conversation-item:hover .delete-conversation {
+      opacity: 1;
     }
     .delete-conversation:hover {
-      background: #c82333;
+      background: #ff3333;
+      color: white;
     }
     .conversation-item.active .delete-conversation {
-      background: #fff;
-      color: #dc3545;
+      color: white;
+      opacity: 1;
     }
-    .conversation-item.active .delete-conversation:hover {
-      background: #f8f9fa;
+    .user-info {
+      padding: 15px;
+      background: #0a0a0a;
+      border-top: 1px solid #000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    #dmMessagesContainer {
+    .username-display {
+      color: #ff3333;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .logout-btn {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.3s;
+    }
+    .logout-btn:hover {
+      background: #ff3333;
+    }
+    .main-content {
       flex: 1;
       display: flex;
       flex-direction: column;
+      background: #0a0a0a;
     }
-    #dmMessages {
+    .chat-header {
+      height: 60px;
+      padding: 0 20px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .chat-members {
+      font-size: 13px;
+      color: #b9bbbe;
+    }
+    .messages-container {
       flex: 1;
-      height: 300px;
       overflow-y: auto;
-      border: 1px solid #ddd;
-      margin-bottom: 10px;
-      padding: 10px;
-      background: #fafafa;
-      border-radius: 5px;
+      padding: 20px;
     }
     .message {
-      margin-bottom: 8px;
-      padding: 8px;
-      background: white;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      background: #1a1a1a;
       border-radius: 6px;
-      border-left: 3px solid #007bff;
+      border-left: 3px solid #ff3333;
     }
     .message.own {
-      border-left-color: #28a745;
-      background: #f0f8f0;
+      border-left-color: #cc0000;
+      background: #2a0a0a;
     }
-    .input-group {
+    .message-author {
+      font-weight: 600;
+      font-size: 14px;
+      color: #ff3333;
+      margin-bottom: 4px;
+    }
+    .message.own .message-author {
+      color: #ff5555;
+    }
+    .message-text {
+      font-size: 14px;
+      color: #dcddde;
+      word-wrap: break-word;
+    }
+    .message-input-container {
+      padding: 20px;
+      background: #1a1a1a;
+    }
+    .message-input-wrapper {
       display: flex;
       gap: 10px;
-      margin: 10px 0;
+      background: #0a0a0a;
+      padding: 10px;
+      border-radius: 8px;
     }
-    .input-group input {
+    .message-input-wrapper input {
       flex: 1;
       padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
+      border: none;
+      background: transparent;
+      color: #dcddde;
+      font-size: 14px;
     }
-    .input-group button {
+    .message-input-wrapper input:focus {
+      outline: none;
+    }
+    .message-input-wrapper input::placeholder {
+      color: #72767d;
+    }
+    .send-btn {
       padding: 10px 20px;
-      background: #007bff;
+      background: #ff3333;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
     }
-    .input-group button:hover {
-      background: #0056b3;
+    .send-btn:hover {
+      background: #ff5555;
     }
-    .error {
-      color: #dc3545;
-      padding: 10px;
-      background: #f8d7da;
-      border-radius: 5px;
-      margin: 10px 0;
-    }
-    .new-dm-section {
-      padding: 10px;
-      background: #e3f2fd;
-      border-radius: 5px;
-      margin-bottom: 10px;
-      position: relative;
+    .send-btn:disabled {
+      background: #333;
+      cursor: not-allowed;
     }
     .empty-state {
       text-align: center;
-      padding: 40px;
-      color: #666;
+      padding: 60px 40px;
+      color: #72767d;
     }
-    #userDropdown {
-      position: absolute;
-      top: 100%;
-      left: 10px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ddd;
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #b9bbbe;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: #1a1a1a;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(255,0,0,0.5);
+      border: 1px solid #2a2a2a;
+      max-width: 500px;
+      width: 90%;
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .modal-content {
+      margin-bottom: 20px;
+    }
+    .modal-input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #333;
       border-radius: 5px;
+      background: #0a0a0a;
+      color: #dcddde;
+      font-size: 14px;
+    }
+    .modal-input:focus {
+      outline: none;
+      border-color: #ff3333;
+    }
+    .modal-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #b9bbbe;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .user-select-list {
       max-height: 200px;
       overflow-y: auto;
-      z-index: 1000;
-      display: none;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border: 1px solid #333;
+      border-radius: 5px;
+      background: #0a0a0a;
+      margin-top: 8px;
     }
-    .dropdown-item {
+    .user-select-item {
       padding: 10px;
+      display: flex;
+      align-items: center;
       cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #1a1a1a;
     }
-    .dropdown-item:hover {
-      background: #f0f0f0;
+    .user-select-item:hover {
+      background: #2a2a2a;
     }
-    .dropdown-item:last-child {
+    .user-select-item:last-child {
       border-bottom: none;
+    }
+    .user-checkbox {
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .selected-users {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .selected-user-tag {
+      background: #ff3333;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .remove-user {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+      line-height: 1;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .modal-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+    .modal-btn.cancel {
+      background: #333;
+      color: white;
+    }
+    .modal-btn.cancel:hover {
+      background: #444;
+    }
+    .modal-btn.confirm {
+      background: #ff3333;
+      color: white;
+    }
+    .modal-btn.confirm:hover {
+      background: #ff5555;
+    }
+    .modal-btn.create {
+      background: #ff3333;
+      color: white;
+    }
+    .modal-btn.create:hover {
+      background: #ff5555;
+    }
+    .modal-btn.create:disabled {
+      background: #333;
+      cursor: not-allowed;
     }
     .toast {
       position: fixed;
       top: 20px;
       right: 20px;
-      background: white;
+      background: #1a1a1a;
       padding: 16px 20px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(255,0,0,0.4);
+      border: 1px solid #2a2a2a;
       z-index: 10000;
       display: flex;
       align-items: center;
@@ -240,6 +463,7 @@
       min-width: 250px;
       max-width: 400px;
       animation: slideIn 0.3s ease;
+      color: #dcddde;
     }
     @keyframes slideIn {
       from {
@@ -251,138 +475,88 @@
         opacity: 1;
       }
     }
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-    }
-    .toast.success {
-      border-left: 4px solid #28a745;
-    }
-    .toast.error {
-      border-left: 4px solid #dc3545;
-    }
-    .toast.warning {
-      border-left: 4px solid #ffc107;
-    }
-    .toast.info {
-      border-left: 4px solid #007bff;
-    }
+    .toast.success { border-left: 4px solid #ff3333; }
+    .toast.error { border-left: 4px solid #ff6666; }
+    .toast.warning { border-left: 4px solid #ff9933; }
+    .toast.info { border-left: 4px solid #ff3333; }
     .toast-icon {
       font-size: 24px;
+      color: #ff3333;
     }
-    .toast-message {
-      flex: 1;
-    }
+    .toast-message { flex: 1; }
     .toast-close {
       background: none;
       border: none;
       font-size: 20px;
       cursor: pointer;
-      color: #666;
+      color: #999;
       padding: 0;
       width: 24px;
       height: 24px;
     }
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
+    .toast-close:hover { color: #ff3333; }
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
     }
-    .modal {
-      background: white;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      max-width: 400px;
-      width: 90%;
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
     }
-    .modal-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 12px;
-    }
-    .modal-message {
-      margin-bottom: 20px;
-      color: #666;
-    }
-    .modal-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-    .modal-btn {
-      padding: 8px 16px;
-      border: none;
+    ::-webkit-scrollbar-thumb {
+      background: #333;
       border-radius: 5px;
-      cursor: pointer;
-      font-size: 14px;
     }
-    .modal-btn.cancel {
-      background: #6c757d;
-      color: white;
-    }
-    .modal-btn.confirm {
-      background: #dc3545;
-      color: white;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ff3333;
     }
   </style>
 </head>
 <body>
   <div id="auth">
-    <h2>Login / Register</h2>
+    <h2>Welcome</h2>
     <input id="username" placeholder="Username" />
     <input id="password" type="password" placeholder="Password" />
     <button id="loginBtn">Login</button>
     <button id="registerBtn">Register</button>
-    <div id="authError" class="error" style="display:none;"></div>
   </div>
   
-  <div id="chat" style="display:none;">
-    <button id="logoutBtn">Logout</button>
-    
-    <div class="chat-section">
-      <h2>ALL THE PEOPLE</h2>
-      <div id="globalMessages"></div>
-      <div class="input-group">
-        <input id="globalInput" placeholder="Type a message..." />
-        <button id="globalSend">Send</button>
+  <div id="chat">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>Direct Messages</h3>
+        <button class="new-dm-btn" id="newDmBtn">+ New</button>
+      </div>
+      <div class="conversations-container" id="conversationsList">
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <div class="empty-state-title">No conversations yet</div>
+          <div>Start a DM or create a group!</div>
+        </div>
+      </div>
+      <div class="user-info">
+        <div class="username-display" id="usernameDisplay"></div>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
       </div>
     </div>
     
-    <div class="chat-section">
-      <h2>DMS</h2>
-      <div class="new-dm-section">
-        <div class="input-group">
-          <input id="newDmUser" placeholder="Enter username here" autocomplete="off" />
-          <button id="startDmBtn">Start Chat</button>
+    <div class="main-content">
+      <div class="chat-header" id="chatHeader" style="display:none;">
+        <div>
+          <div class="chat-title" id="chatTitle"></div>
+          <div class="chat-members" id="chatMembers"></div>
         </div>
-        <div id="userDropdown"></div>
       </div>
-      <div class="dm-container">
-        <div id="conversationsList">
-          <div class="empty-state">No one here</div>
+      <div class="messages-container" id="messagesContainer">
+        <div class="empty-state">
+          <div class="empty-state-icon">👋</div>
+          <div class="empty-state-title">Welcome!</div>
+          <div>Select a conversation or start a new one</div>
         </div>
-        <div id="dmMessagesContainer">
-          <div id="dmMessages">
-            <div class="empty-state">Select a conversation or start a new one</div>
-          </div>
-          <div class="input-group">
-            <input id="dmInput" placeholder="Type a DM..." disabled />
-            <button id="dmSend" disabled>Send</button>
-          </div>
+      </div>
+      <div class="message-input-container" id="messageInputContainer" style="display:none;">
+        <div class="message-input-wrapper">
+          <input id="messageInput" placeholder="Type a message..." disabled />
+          <button id="sendBtn" class="send-btn" disabled>Send</button>
         </div>
       </div>
     </div>
@@ -391,7 +565,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
@@ -406,98 +580,31 @@
     const auth = getAuth();
     const db = getFirestore();
 
-    const authDiv = document.getElementById("auth");
-    const chatDiv = document.getElementById("chat");
-    const authError = document.getElementById("authError");
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-    const loginBtn = document.getElementById("loginBtn");
-    const registerBtn = document.getElementById("registerBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const globalMessages = document.getElementById("globalMessages");
-    const globalInput = document.getElementById("globalInput");
-    const globalSend = document.getElementById("globalSend");
-    const newDmUser = document.getElementById("newDmUser");
-    const startDmBtn = document.getElementById("startDmBtn");
-    const userDropdown = document.getElementById("userDropdown");
-    const conversationsList = document.getElementById("conversationsList");
-    const dmMessages = document.getElementById("dmMessages");
-    const dmInput = document.getElementById("dmInput");
-    const dmSend = document.getElementById("dmSend");
-
+    let currentConversation = null;
     let currentDMListener = null;
     let conversationsListener = null;
-    let currentConversation = null;
-    let conversations = new Set();
+    let conversations = new Map();
     let allUsers = [];
 
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      
-      const icons = {
-        success: '✓',
-        error: '✕',
-        warning: '⚠',
-        info: 'ℹ'
-      };
-      
+      const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
       toast.innerHTML = `
-        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-icon">${icons[type]}</div>
         <div class="toast-message">${message}</div>
         <button class="toast-close" onclick="this.parentElement.remove()">×</button>
       `;
-      
       document.body.appendChild(toast);
-      
-      setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
-
-    function showConfirm(title, message, onConfirm) {
-      const overlay = document.createElement('div');
-      overlay.className = 'modal-overlay';
-      
-      overlay.innerHTML = `
-        <div class="modal">
-          <div class="modal-title">${title}</div>
-          <div class="modal-message">${message}</div>
-          <div class="modal-buttons">
-            <button class="modal-btn cancel">Cancel</button>
-            <button class="modal-btn confirm">Delete</button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(overlay);
-      
-      overlay.querySelector('.cancel').onclick = () => overlay.remove();
-      overlay.querySelector('.confirm').onclick = () => {
-        overlay.remove();
-        onConfirm();
-      };
-      overlay.onclick = (e) => {
-        if (e.target === overlay) overlay.remove();
-      };
-    }
-
-    function showError(message) {
-      showToast(message, 'error');
+      setTimeout(() => toast.remove(), 3000);
     }
 
     function fakeEmail(username) {
       return `${username}@chatapp.com`;
     }
 
-    function getConversationId(user1, user2) {
-      return [user1, user2].sort().join("_");
-    }
-
-    function getOtherUser(conversationId, currentUser) {
-      const users = conversationId.split("_");
-      return users[0] === currentUser ? users[1] : users[0];
+    function getConversationId(users) {
+      return users.sort().join("_");
     }
 
     async function loadAllUsers() {
@@ -512,371 +619,159 @@
       });
     }
 
-    newDmUser.oninput = () => {
-      const searchTerm = newDmUser.value.trim().toLowerCase();
-      
-      if (searchTerm.length === 0) {
-        userDropdown.style.display = 'none';
-        return;
-      }
-
-      const matches = allUsers.filter(user => 
-        user.toLowerCase().includes(searchTerm)
-      );
-
-      if (matches.length === 0) {
-        userDropdown.innerHTML = '<div class="dropdown-item">No users found</div>';
-        userDropdown.style.display = 'block';
-        return;
-      }
-
-      userDropdown.innerHTML = '';
-      matches.forEach(username => {
-        const div = document.createElement('div');
-        div.className = 'dropdown-item';
-        div.textContent = username;
-        div.onclick = () => {
-          newDmUser.value = username;
-          userDropdown.style.display = 'none';
-        };
-        userDropdown.appendChild(div);
-      });
-
-      userDropdown.style.display = 'block';
-    };
-
-    document.addEventListener('click', (e) => {
-      if (!newDmUser.contains(e.target) && !userDropdown.contains(e.target)) {
-        userDropdown.style.display = 'none';
-      }
-    });
-
-    registerBtn.onclick = async () => {
+    document.getElementById("registerBtn").onclick = async () => {
       try {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
-
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
         if (!username || !password) {
-          showError("Please enter username and password");
+          showToast("Please enter username and password", "error");
           return;
         }
-
         if (password.length < 6) {
-          showError("Password must be at least 6 characters");
+          showToast("Password must be at least 6 characters", "error");
           return;
         }
-
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("username", "==", username));
         const snap = await getDocs(q);
-
         if (!snap.empty) {
-          showError("Username already taken");
+          showToast("Username already taken", "error");
           return;
         }
-
         const email = fakeEmail(username);
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        await updateProfile(user, { displayName: username });
-        await setDoc(doc(db, "users", user.uid), { username });
-
-        usernameInput.value = "";
-        passwordInput.value = "";
+        await updateProfile(userCredential.user, { displayName: username });
+        await setDoc(doc(db, "users", userCredential.user.uid), { username });
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
       } catch (error) {
-        console.error("Register error:", error);
-        showError(error.message);
+        showToast(error.message, "error");
       }
     };
 
-    loginBtn.onclick = async () => {
+    document.getElementById("loginBtn").onclick = async () => {
       try {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
-        
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
         if (!username || !password) {
-          showError("Please enter username and password");
+          showToast("Please enter username and password", "error");
           return;
         }
-
         const email = fakeEmail(username);
         await signInWithEmailAndPassword(auth, email, password);
-        
-        usernameInput.value = "";
-        passwordInput.value = "";
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
       } catch (error) {
-        console.error("Login error:", error);
-        showError("Invalid username or password");
+        showToast("Invalid username or password", "error");
       }
     };
 
-    logoutBtn.onclick = async () => {
-      await signOut(auth);
-    };
+    document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, user => {
       if (user) {
-        authDiv.style.display = "none";
-        chatDiv.style.display = "block";
-        startGlobalChat();
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("chat").style.display = "flex";
+        document.getElementById("usernameDisplay").textContent = user.displayName;
         loadConversations();
         loadAllUsers();
       } else {
-        authDiv.style.display = "block";
-        chatDiv.style.display = "none";
-        if (currentDMListener) {
-          currentDMListener();
-          currentDMListener = null;
-        }
-        if (conversationsListener) {
-          conversationsListener();
-          conversationsListener = null;
-        }
+        document.getElementById("auth").style.display = "block";
+        document.getElementById("chat").style.display = "none";
+        if (currentDMListener) currentDMListener();
+        if (conversationsListener) conversationsListener();
         conversations.clear();
         currentConversation = null;
         allUsers = [];
       }
     });
 
-function startGlobalChat() {
-  const q = query(
-    collection(db, "globalMessages"),
-    orderBy("createdAt", "desc"),
-    limit(50)
-  );
-
-  onSnapshot(q, snapshot => {
-    globalMessages.innerHTML = "";
-
-    // reverse so oldest is on top, newest at bottom
-    const docs = snapshot.docs.reverse();
-
-    docs.forEach(docSnap => {
-      const data = docSnap.data();
-      const div = document.createElement("div");
-
-      div.className = "message";
-      if (data.username === auth.currentUser?.displayName) {
-        div.classList.add("own");
-      }
-
-      div.textContent = `${data.username}: ${data.text}`;
-      globalMessages.appendChild(div);
-    });
-
-    globalMessages.scrollTop = globalMessages.scrollHeight;
-  });
-}
- async function cleanupGlobalMessages() {
-  const q = query(
-    collection(db, "globalMessages"),
-    orderBy("createdAt", "desc")
-  );
-
-  const snap = await getDocs(q);
-  const docs = snap.docs;
-
-  if (docs.length <= 50) return;
-
-  const excess = docs.slice(50); // everything past newest 50
-  await Promise.all(excess.map(d => deleteDoc(d.ref)));
-}   
-
-    globalSend.onclick = sendGlobalMessage;
-    globalInput.onkeypress = (e) => {
-      if (e.key === 'Enter') sendGlobalMessage();
-    };
-
-    async function sendGlobalMessage() {
-      const text = globalInput.value.trim();
-      if (!text) return;
-
-      try {
-        await addDoc(collection(db, "globalMessages"), {
-          username: auth.currentUser.displayName,
-          text,
-          createdAt: serverTimestamp()
-        });
-        globalInput.value = "";
-      } catch (error) {
-        console.error("Error sending message:", error);
-        showError("Failed to send message: " + error.message);
-      }
-    }
-
-    function updateConversationsList() {
-      conversationsList.innerHTML = "";
-      
-      if (conversations.size === 0) {
-        conversationsList.innerHTML = '<div class="empty-state">No conversations yet</div>';
-        return;
-      }
-
-      conversations.forEach(conversationId => {
-        addConversationToList(conversationId);
-      });
-    }
-
     function loadConversations() {
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
-      
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
-        const foundConversations = new Set();
-        
+        conversations.clear();
         for (const docSnap of snapshot.docs) {
-          const conversationId = docSnap.id;
-          const users = conversationId.split("_");
-          
-          if (users.includes(currentUser)) {
-            try {
-              const messagesRef = collection(db, "dms", conversationId, "messages");
-              const messagesQuery = query(messagesRef, limit(1));
-              const messagesSnap = await getDocs(messagesQuery);
-              
-              if (!messagesSnap.empty) {
-                foundConversations.add(conversationId);
-              }
-            } catch (error) {
-              console.log("Error checking messages for", conversationId);
-            }
+          const data = docSnap.data();
+          if (data.members && data.members.includes(currentUser)) {
+            conversations.set(docSnap.id, {
+              id: docSnap.id,
+              members: data.members,
+              groupName: data.groupName || null,
+              lastMessage: data.lastMessage || null
+            });
           }
         }
-        
-        conversations = foundConversations;
         updateConversationsList();
       });
     }
 
-    function addConversationToList(conversationId) {
-      const currentUser = auth.currentUser.displayName;
-      const otherUser = getOtherUser(conversationId, currentUser);
-      
-      const div = document.createElement("div");
-      div.className = "conversation-item";
-      
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "conversation-name";
-      nameSpan.textContent = otherUser;
-      nameSpan.onclick = () => selectConversation(conversationId, div);
-      
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "delete-conversation";
-      deleteBtn.textContent = "×";
-      deleteBtn.onclick = (e) => {
-        e.stopPropagation();
-        deleteConversation(conversationId);
-      };
-      
-      div.appendChild(nameSpan);
-      div.appendChild(deleteBtn);
-      conversationsList.appendChild(div);
+    function updateConversationsList() {
+      const container = document.getElementById("conversationsList");
+      container.innerHTML = "";
+      if (conversations.size === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">💬</div>
+            <div class="empty-state-title">No conversations yet</div>
+            <div>Start a DM or create a group!</div>
+          </div>
+        `;
+        return;
+      }
+      conversations.forEach(conv => {
+        const div = document.createElement("div");
+        div.className = "conversation-item";
+        if (currentConversation === conv.id) div.classList.add("active");
+        
+        const currentUser = auth.currentUser.displayName;
+        const otherMembers = conv.members.filter(m => m !== currentUser);
+        const displayName = conv.groupName || otherMembers.join(", ");
+        const isGroup = conv.members.length > 2;
+        
+        div.innerHTML = `
+          <div class="conversation-info">
+            <div class="conversation-name">${isGroup ? '👥 ' : ''}${displayName}</div>
+            <div class="conversation-members">${conv.members.length} member${conv.members.length > 1 ? 's' : ''}</div>
+          </div>
+          <button class="delete-conversation">×</button>
+        `;
+        
+        div.querySelector(".conversation-info").onclick = () => selectConversation(conv.id);
+        div.querySelector(".delete-conversation").onclick = (e) => {
+          e.stopPropagation();
+          deleteConversation(conv.id);
+        };
+        
+        container.appendChild(div);
+      });
     }
 
-    function selectConversation(conversationId, element) {
+    function selectConversation(conversationId) {
       currentConversation = conversationId;
+      const conv = conversations.get(conversationId);
+      const currentUser = auth.currentUser.displayName;
+      const otherMembers = conv.members.filter(m => m !== currentUser);
+      const displayName = conv.groupName || otherMembers.join(", ");
+      const isGroup = conv.members.length > 2;
       
-      document.querySelectorAll('.conversation-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      element.classList.add('active');
+      document.getElementById("chatHeader").style.display = "flex";
+      document.getElementById("chatTitle").textContent = (isGroup ? '👥 ' : '') + displayName;
+      document.getElementById("chatMembers").textContent = conv.members.join(", ");
+      document.getElementById("messageInputContainer").style.display = "block";
+      document.getElementById("messageInput").disabled = false;
+      document.getElementById("sendBtn").disabled = false;
       
-      dmInput.disabled = false;
-      dmSend.disabled = false;
-      
+      updateConversationsList();
       startDM(conversationId);
-    }
-
-    startDmBtn.onclick = async () => {
-      const otherUser = newDmUser.value.trim();
-      if (!otherUser) {
-        showToast("Please enter a username", "warning");
-        return;
-      }
-
-      const currentUser = auth.currentUser.displayName;
-      
-      if (otherUser === currentUser) {
-        showToast("You can't message yourself!", "warning");
-        return;
-      }
-
-      if (!allUsers.includes(otherUser)) {
-        showToast("User not found. Make sure the username is correct.", "error");
-        return;
-      }
-
-      const conversationId = getConversationId(currentUser, otherUser);
-      
-      if (!conversations.has(conversationId)) {
-        conversations.add(conversationId);
-        updateConversationsList();
-      }
-      
-      const items = conversationsList.querySelectorAll('.conversation-item');
-      items.forEach(item => {
-        const nameElem = item.querySelector('.conversation-name');
-        if (nameElem && nameElem.textContent === otherUser) {
-          selectConversation(conversationId, item);
-        }
-      });
-      
-      newDmUser.value = "";
-      userDropdown.style.display = 'none';
-    };
-
-    newDmUser.onkeypress = (e) => {
-      if (e.key === 'Enter') {
-        userDropdown.style.display = 'none';
-        startDmBtn.onclick();
-      }
-    };
-
-    dmSend.onclick = sendDM;
-    dmInput.onkeypress = (e) => {
-      if (e.key === 'Enter') sendDM();
-    };
-
-    async function sendDM() {
-      const text = dmInput.value.trim();
-      
-      if (!currentConversation) {
-        showToast("Please select a conversation first", "warning");
-        return;
-      }
-      if (!text) return;
-
-      const currentUser = auth.currentUser.displayName;
-      const otherUser = getOtherUser(currentConversation, currentUser);
-
-      try {
-        await setDoc(doc(db, "dms", currentConversation), {
-          users: [currentUser, otherUser],
-          lastMessage: text,
-          lastMessageTime: serverTimestamp()
-        }, { merge: true });
-
-        await addDoc(collection(db, "dms", currentConversation, "messages"), {
-          from: currentUser,
-          to: otherUser,
-          text,
-          createdAt: serverTimestamp()
-        });
-        
-        dmInput.value = "";
-      } catch (error) {
-        console.error("Error sending DM:", error);
-        showToast("Failed to send DM: " + error.message, "error");
-      }
     }
 
     function startDM(conversationId) {
       if (currentDMListener) currentDMListener();
-
       const q = query(collection(db, "dms", conversationId, "messages"), orderBy("createdAt", "asc"));
       currentDMListener = onSnapshot(q, snapshot => {
-        dmMessages.innerHTML = "";
+        const container = document.getElementById("messagesContainer");
+        container.innerHTML = "";
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
           const div = document.createElement("div");
@@ -884,44 +779,190 @@ function startGlobalChat() {
           if (data.from === auth.currentUser?.displayName) {
             div.classList.add("own");
           }
-          div.textContent = `${data.from}: ${data.text}`;
-          dmMessages.appendChild(div);
+          div.innerHTML = `
+            <div class="message-author">${data.from}</div>
+            <div class="message-text">${data.text}</div>
+          `;
+          container.appendChild(div);
         });
-        dmMessages.scrollTop = dmMessages.scrollHeight;
+        container.scrollTop = container.scrollHeight;
       });
     }
 
-    async function deleteConversation(conversationId) {
-      showConfirm(
-        "Delete Conversation",
-        "This will remove all messages. Are you sure?",
-        async () => {
-          try {
-            const messagesRef = collection(db, "dms", conversationId, "messages");
-            const messagesSnap = await getDocs(messagesRef);
+    document.getElementById("sendBtn").onclick = sendMessage;
+    document.getElementById("messageInput").onkeypress = (e) => {
+      if (e.key === 'Enter') sendMessage();
+    };
+
+    async function sendMessage() {
+      const text = document.getElementById("messageInput").value.trim();
+      if (!currentConversation || !text) return;
+      const conv = conversations.get(currentConversation);
+      try {
+        await setDoc(doc(db, "dms", currentConversation), {
+          members: conv.members,
+          groupName: conv.groupName || null,
+          lastMessage: text,
+          lastMessageTime: serverTimestamp()
+        }, { merge: true });
+        await addDoc(collection(db, "dms", currentConversation, "messages"), {
+          from: auth.currentUser.displayName,
+          text,
+          createdAt: serverTimestamp()
+        });
+        document.getElementById("messageInput").value = "";
+      } catch (error) {
+        showToast("Failed to send message", "error");
+      }
+    }
+
+    document.getElementById("newDmBtn").onclick = showNewDmModal;
+
+    function showNewDmModal() {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">Create New Conversation</div>
+          <div class="modal-content">
+            <label class="modal-label">Group Name (optional for groups)</label>
+            <input type="text" class="modal-input" id="groupNameInput" placeholder="Leave empty for DM" />
             
-            const deletePromises = [];
-            messagesSnap.forEach(msgDoc => {
-              deletePromises.push(deleteDoc(msgDoc.ref));
-            });
+            <label class="modal-label">Select Users</label>
+            <input type="text" class="modal-input" id="userSearchInput" placeholder="Search users..." />
+            <div class="user-select-list" id="userSelectList"></div>
             
-            await Promise.all(deletePromises);
-            await deleteDoc(doc(db, "dms", conversationId));
-            
-            if (currentConversation === conversationId) {
-              currentConversation = null;
-              dmMessages.innerHTML = '<div class="empty-state">Select a conversation or start a new one</div>';
-              dmInput.disabled = true;
-              dmSend.disabled = true;
-            }
-            
-            showToast("Conversation deleted", "success");
-          } catch (error) {
-            console.error("Error deleting conversation:", error);
-            showToast("Failed to delete conversation: " + error.message, "error");
-          }
+            <div class="selected-users" id="selectedUsersList"></div>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Cancel</button>
+            <button class="modal-btn create" id="createConvBtn">Create</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      const selectedUsers = new Set();
+      const userSearchInput = overlay.querySelector('#userSearchInput');
+      const userSelectList = overlay.querySelector('#userSelectList');
+      const selectedUsersList = overlay.querySelector('#selectedUsersList');
+      
+      function updateUserList(searchTerm = '') {
+        userSelectList.innerHTML = '';
+        const filtered = allUsers.filter(u => 
+          u.toLowerCase().includes(searchTerm.toLowerCase()) && !selectedUsers.has(u)
+        );
+        filtered.forEach(username => {
+          const div = document.createElement('div');
+          div.className = 'user-select-item';
+          div.innerHTML = `
+            <input type="checkbox" class="user-checkbox" />
+            <span>${username}</span>
+          `;
+          div.onclick = () => {
+            selectedUsers.add(username);
+            updateSelectedUsers();
+            updateUserList(userSearchInput.value);
+          };
+          userSelectList.appendChild(div);
+        });
+        if (filtered.length === 0) {
+          userSelectList.innerHTML = '<div style="padding:10px;color:#72767d;text-align:center;">No users found</div>';
         }
-      );
+      }
+      
+      function updateSelectedUsers() {
+        selectedUsersList.innerHTML = '';
+        selectedUsers.forEach(username => {
+          const tag = document.createElement('div');
+          tag.className = 'selected-user-tag';
+          tag.innerHTML = `
+            ${username}
+            <button class="remove-user">×</button>
+          `;
+          tag.querySelector('.remove-user').onclick = () => {
+            selectedUsers.delete(username);
+            updateSelectedUsers();
+            updateUserList(userSearchInput.value);
+          };
+          selectedUsersList.appendChild(tag);
+        });
+      }
+      
+      userSearchInput.oninput = (e) => updateUserList(e.target.value);
+      updateUserList();
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.querySelector('#createConvBtn').onclick = async () => {
+        if (selectedUsers.size === 0) {
+          showToast("Please select at least one user", "warning");
+          return;
+        }
+        const groupName = overlay.querySelector('#groupNameInput').value.trim();
+        const members = [auth.currentUser.displayName, ...Array.from(selectedUsers)];
+        const conversationId = getConversationId(members);
+        
+        try {
+          await setDoc(doc(db, "dms", conversationId), {
+            members,
+            groupName: members.length > 2 ? (groupName || null) : null,
+            createdAt: serverTimestamp()
+          });
+          overlay.remove();
+          showToast("Conversation created!", "success");
+        } catch (error) {
+          showToast("Failed to create conversation", "error");
+        }
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
+    }
+
+    function deleteConversation(conversationId) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">Delete Conversation</div>
+          <div class="modal-content">
+            <p style="color:#b9bbbe;">This will remove all messages. Are you sure?</p>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Cancel</button>
+            <button class="modal-btn confirm">Delete</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.querySelector('.confirm').onclick = async () => {
+        try {
+          const messagesRef = collection(db, "dms", conversationId, "messages");
+          const messagesSnap = await getDocs(messagesRef);
+          await Promise.all(messagesSnap.docs.map(d => deleteDoc(d.ref)));
+          await deleteDoc(doc(db, "dms", conversationId));
+          if (currentConversation === conversationId) {
+            currentConversation = null;
+            document.getElementById("chatHeader").style.display = "none";
+            document.getElementById("messageInputContainer").style.display = "none";
+            document.getElementById("messagesContainer").innerHTML = `
+              <div class="empty-state">
+                <div class="empty-state-icon">👋</div>
+                <div class="empty-state-title">Welcome!</div>
+                <div>Select a conversation or start a new one</div>
+              </div>
+            `;
+          }
+          overlay.remove();
+          showToast("Conversation deleted", "success");
+        } catch (error) {
+          showToast("Failed to delete conversation", "error");
+        }
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
     }
   </script>
 </body>
