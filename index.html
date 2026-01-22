@@ -639,23 +639,49 @@
       }
     });
 
-    function startGlobalChat() {
-      const q = query(collection(db, "globalMessages"), orderBy("createdAt", "asc"));
-      onSnapshot(q, snapshot => {
-        globalMessages.innerHTML = "";
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          const div = document.createElement("div");
-          div.className = "message";
-          if (data.username === auth.currentUser?.displayName) {
-            div.classList.add("own");
-          }
-          div.textContent = `${data.username}: ${data.text}`;
-          globalMessages.appendChild(div);
-        });
-        globalMessages.scrollTop = globalMessages.scrollHeight;
-      });
-    }
+function startGlobalChat() {
+  const q = query(
+    collection(db, "globalMessages"),
+    orderBy("createdAt", "desc"),
+    limit(50)
+  );
+
+  onSnapshot(q, snapshot => {
+    globalMessages.innerHTML = "";
+
+    // reverse so oldest is on top, newest at bottom
+    const docs = snapshot.docs.reverse();
+
+    docs.forEach(docSnap => {
+      const data = docSnap.data();
+      const div = document.createElement("div");
+
+      div.className = "message";
+      if (data.username === auth.currentUser?.displayName) {
+        div.classList.add("own");
+      }
+
+      div.textContent = `${data.username}: ${data.text}`;
+      globalMessages.appendChild(div);
+    });
+
+    globalMessages.scrollTop = globalMessages.scrollHeight;
+  });
+}
+ async function cleanupGlobalMessages() {
+  const q = query(
+    collection(db, "globalMessages"),
+    orderBy("createdAt", "desc")
+  );
+
+  const snap = await getDocs(q);
+  const docs = snap.docs;
+
+  if (docs.length <= 50) return;
+
+  const excess = docs.slice(50); // everything past newest 50
+  await Promise.all(excess.map(d => deleteDoc(d.ref)));
+}   
 
     globalSend.onclick = sendGlobalMessage;
     globalInput.onkeypress = (e) => {
