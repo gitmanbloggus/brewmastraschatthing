@@ -117,19 +117,6 @@
       background: #ff3333;
       color: white;
     }
-    .new-dm-btn {
-      background: #ff3333;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: background 0.3s;
-    }
-    .new-dm-btn:hover {
-      background: #ff5555;
-    }
     .conversations-container {
       flex: 1;
       overflow-y: auto;
@@ -332,10 +319,6 @@
       text-align: center;
       padding: 60px 40px;
       color: #72767d;
-    }
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
     }
     .empty-state-title {
       font-size: 18px;
@@ -595,36 +578,6 @@
       font-size: 16px;
       margin-bottom: 12px;
     }
-    .add-friend-input {
-      display: flex;
-      gap: 10px;
-    }
-    .add-friend-input input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #333;
-      border-radius: 5px;
-      background: #0a0a0a;
-      color: #dcddde;
-      font-size: 14px;
-    }
-    .add-friend-input input:focus {
-      outline: none;
-      border-color: #ff3333;
-    }
-    .add-friend-input button {
-      padding: 10px 20px;
-      background: #ff3333;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background 0.3s;
-    }
-    .add-friend-input button:hover {
-      background: #ff5555;
-    }
     .toast {
       position: fixed;
       top: 20px;
@@ -687,6 +640,19 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #ff3333;
     }
+    .new-dm-btn {
+      background: #ff3333;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.3s;
+    }
+    .new-dm-btn:hover {
+      background: #ff5555;
+    }
   </style>
 </head>
 <body>
@@ -721,11 +687,76 @@
     </div>
     
     <div class="main-content">
+      <div id="settingsView" style="display:none;">
+        <div class="friends-container">
+          <div class="friends-header">
+            <h2>Settings</h2>
+            <button class="new-dm-btn" id="backFromSettingsBtn">Back</button>
+          </div>
+          
+          <div class="add-friend-section">
+            <h3>Privacy Settings</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
+              <div>
+                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Allow Non-Friends to Message</div>
+                <div style="font-size: 13px; color: #72767d;">When enabled, anyone can start a conversation with you</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="allowNonFriendsDM" style="opacity: 0; width: 0; height: 0;">
+                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px;"></span>
+                <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="add-friend-section">
+            <h3>Notification Settings</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
+              <div>
+                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Message Notifications</div>
+                <div style="font-size: 13px; color: #72767d;">Show toast notifications for new messages</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="messageNotifications" checked style="opacity: 0; width: 0; height: 0;">
+                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px;"></span>
+                <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+              </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
+              <div>
+                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Friend Request Notifications</div>
+                <div style="font-size: 13px; color: #72767d;">Get notified when you receive friend requests</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="friendRequestNotifications" checked style="opacity: 0; width: 0; height: 0;">
+                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px;"></span>
+                <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="add-friend-section">
+            <h3>Display Settings</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
+              <div>
+                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Show Timestamps</div>
+                <div style="font-size: 13px; color: #72767d;">Display message timestamps</div>
+              </div>
+              <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="showTimestamps" checked style="opacity: 0; width: 0; height: 0;">
+                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px;"></span>
+                <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="friendsView" style="display:none;">
         <div class="friends-container">
           <div class="friends-header">
             <h2>Friends</h2>
-            <button class="new-dm-btn" id="backToMessagesBtn">← Back</button>
+            <button class="new-dm-btn" id="backToMessagesBtn">Back</button>
           </div>
           
           <div class="friends-tabs">
@@ -737,9 +768,10 @@
           <div id="addFriendTab" style="display:none;">
             <div class="add-friend-section">
               <h3>Add a Friend</h3>
-              <div class="add-friend-input">
-                <input id="addFriendInput" placeholder="Enter username" />
-                <button id="sendFriendRequestBtn">Send Request</button>
+              <div style="position: relative;">
+                <input id="addFriendInput" class="modal-input" placeholder="Search for users..." autocomplete="off" />
+                <div id="addFriendDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 5px;">
+                </div>
               </div>
             </div>
           </div>
@@ -1145,14 +1177,6 @@
     document.getElementById("backFromSettingsBtn").onclick = () => {
       document.getElementById("settingsView").style.display = "none";
       document.getElementById("friendsView").style.display = "none";
-      document.getElementById("chatView").style.display = "flex";
-      document.getElementById("chatView").style.flexDirection = "column";
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    };
-
-    document.getElementById("backToMessagesBtn").onclick = () => {
-      document.getElementById("friendsView").style.display = "none";
-      document.getElementById("settingsView").style.display = "none";
       document.getElementById("chatView").style.display = "flex";
       document.getElementById("chatView").style.flexDirection = "column";
       document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
