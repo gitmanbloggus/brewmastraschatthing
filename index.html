@@ -671,8 +671,10 @@
         <div class="sidebar-nav">
           <button class="nav-btn" id="friendsBtn">Friends</button>
           <button class="nav-btn" id="settingsBtn">Settings</button>
-          <button class="nav-btn" id="newDmBtn">New Chat</button>
         </div>
+      </div>
+      <div style="padding: 8px;">
+        <button style="width: 100%; background: #ff3333; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.3s;" id="newDmBtn" onmouseover="this.style.background='#ff5555'" onmouseout="this.style.background='#ff3333'">+ New Chat</button>
       </div>
       <div class="conversations-container" id="conversationsList">
         <div class="empty-state">
@@ -691,7 +693,7 @@
         <div class="friends-container">
           <div class="friends-header">
             <h2>Settings</h2>
-            <button class="new-dm-btn" id="backFromSettingsBtn">Back</button>
+            <button class="new-dm-btn" id="backFromSettingsBtn">← Back</button>
           </div>
           
           <div class="add-friend-section">
@@ -749,6 +751,12 @@
               </label>
             </div>
           </div>
+
+          <div class="add-friend-section" id="adminPanel" style="display:none;">
+            <h3 style="color: #ff3333;">Admin Panel</h3>
+            <p style="color: #b9bbbe; font-size: 13px; margin-bottom: 15px;">You have admin privileges</p>
+            <button class="new-dm-btn" id="manageUsersBtn">Manage Users</button>
+          </div>
         </div>
       </div>
 
@@ -756,7 +764,7 @@
         <div class="friends-container">
           <div class="friends-header">
             <h2>Friends</h2>
-            <button class="new-dm-btn" id="backToMessagesBtn">Back</button>
+            <button class="new-dm-btn" id="backToMessagesBtn">← Back</button>
           </div>
           
           <div class="friends-tabs">
@@ -834,6 +842,7 @@
       friendRequestNotifications: true,
       showTimestamps: true
     };
+    const ADMIN_USERNAMES = ['your_username_here'];
 
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
@@ -880,10 +889,113 @@
         document.getElementById("friendRequestNotifications").checked = userSettings.friendRequestNotifications;
         document.getElementById("showTimestamps").checked = userSettings.showTimestamps;
         
+        if (ADMIN_USERNAMES.includes(auth.currentUser.displayName)) {
+          document.getElementById("adminPanel").style.display = "block";
+        }
+        
         setupToggleSwitches();
       } catch (error) {
         console.log("Settings load error:", error);
       }
+    }
+
+    document.getElementById("manageUsersBtn").onclick = showManageUsersModal;
+
+    function showManageUsersModal() {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">Manage Users (Admin)</div>
+          <div class="modal-content">
+            <div id="userManagementList" style="max-height: 400px; overflow-y: auto;">
+              <p style="color: #72767d; text-align: center;">Loading users...</p>
+            </div>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Close</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      loadAllUsersForAdmin();
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
+    }
+
+    async function loadAllUsersForAdmin() {
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      const container = document.getElementById("userManagementList");
+      container.innerHTML = '';
+      
+      snapshot.forEach(docSnap => {
+        const username = docSnap.data().username;
+        const userId = docSnap.id;
+        
+        const div = document.createElement('div');
+        div.className = 'friend-item';
+        div.innerHTML = `
+          <div>
+            <div class="friend-name">${username}</div>
+            <div class="friend-status">UID: ${userId}</div>
+          </div>
+          <div class="friend-actions">
+            <button class="friend-btn remove">Delete User</button>
+          </div>
+        `;
+        
+        div.querySelector('.remove').onclick = () => deleteUserAccount(userId, username);
+        container.appendChild(div);
+      });
+    }
+
+    async function deleteUserAccount(userId, username) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">Delete User Account</div>
+          <div class="modal-content">
+            <p style="color:#b9bbbe;">Are you sure you want to delete ${username}?</p>
+            <p style="color:#ff6666; font-size: 13px; margin-top: 10px;">Warning: This will delete their user document but NOT their Firebase Auth account. They won't be able to log in with their credentials anymore, but the auth account will still exist in Firebase Auth.</p>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Cancel</button>
+            <button class="modal-btn confirm">Delete</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.querySelector('.confirm').onclick = async () => {
+        try {
+          await deleteDoc(doc(db, "users", userId));
+          
+          const friendRequestsRef = collection(db, "friendRequests");
+          const friendsSnap = await getDocs(friendRequestsRef);
+          friendsSnap.forEach(async (docSnap) => {
+            const data = docSnap.data();
+            if (data.from === username || data.to === username) {
+              await deleteDoc(docSnap.ref);
+            }
+          });
+          
+          overlay.remove();
+          showToast(`User ${username} deleted`, "success");
+          loadAllUsersForAdmin();
+        } catch (error) {
+          showToast("Failed to delete user", "error");
+        }
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
     }
 
     function setupToggleSwitches() {
@@ -1169,8 +1281,6 @@
     };
 
     document.getElementById("newDmBtn").onclick = () => {
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-      document.getElementById("newDmBtn").classList.add('active');
       showNewDmModal();
     };
 
