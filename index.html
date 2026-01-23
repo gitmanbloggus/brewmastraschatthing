@@ -895,8 +895,16 @@
         document.getElementById("friendRequestNotifications").checked = userSettings.friendRequestNotifications;
         document.getElementById("showTimestamps").checked = userSettings.showTimestamps;
         
+        console.log("Current username:", auth.currentUser.displayName);
+        console.log("Admin usernames:", ADMIN_USERNAMES);
+        console.log("Is admin?", ADMIN_USERNAMES.includes(auth.currentUser.displayName));
+        
         if (ADMIN_USERNAMES.includes(auth.currentUser.displayName)) {
-          document.getElementById("adminPanel").style.display = "block";
+          const adminPanel = document.getElementById("adminPanel");
+          if (adminPanel) {
+            adminPanel.style.display = "block";
+            console.log("Admin panel shown");
+          }
         }
         
         setupToggleSwitches();
@@ -905,7 +913,10 @@
       }
     }
 
-    document.getElementById("manageUsersBtn").onclick = showManageUsersModal;
+    const manageUsersBtn = document.getElementById("manageUsersBtn");
+    if (manageUsersBtn) {
+      manageUsersBtn.onclick = showManageUsersModal;
+    }
 
     function showManageUsersModal() {
       const overlay = document.createElement('div');
@@ -1206,6 +1217,8 @@
       const q = query(collection(db, "dms", conversationId, "messages"), orderBy("createdAt", "asc"));
       currentDMListener = onSnapshot(q, snapshot => {
         const container = document.getElementById("messagesContainer");
+        const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+        
         container.innerHTML = "";
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
@@ -1238,9 +1251,10 @@
           `;
           container.appendChild(div);
         });
-        setTimeout(() => {
+        
+        requestAnimationFrame(() => {
           container.scrollTop = container.scrollHeight;
-        }, 100);
+        });
       });
     }
 
@@ -1266,9 +1280,11 @@
           createdAt: serverTimestamp()
         });
         document.getElementById("messageInput").value = "";
-        setTimeout(() => {
-          document.getElementById("messagesContainer").scrollTop = document.getElementById("messagesContainer").scrollHeight;
-        }, 100);
+        
+        const container = document.getElementById("messagesContainer");
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+        });
       } catch (error) {
         showToast("Failed to send message", "error");
       }
@@ -1739,3 +1755,11 @@
   </script>
 </body>
 </html>
+
+    document.getElementById("backToMessagesBtn").onclick = () => {
+      document.getElementById("friendsView").style.display = "none";
+      document.getElementById("settingsView").style.display = "none";
+      document.getElementById("chatView").style.display = "flex";
+      document.getElementById("chatView").style.flexDirection = "column";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    };
