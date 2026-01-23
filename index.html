@@ -86,13 +86,36 @@
       padding: 15px;
       background: #0a0a0a;
       border-bottom: 1px solid #000;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
     .sidebar-header h3 {
       color: #ff3333;
       font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-btn {
+      background: transparent;
+      color: #b9bbbe;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+      text-align: left;
+      font-weight: 500;
+    }
+    .nav-btn:hover {
+      background: #2a2a2a;
+      color: #dcddde;
+    }
+    .nav-btn.active {
+      background: #ff3333;
+      color: white;
     }
     .new-dm-btn {
       background: #ff3333;
@@ -679,10 +702,10 @@
     <div class="sidebar">
       <div class="sidebar-header">
         <h3>Messages</h3>
-        <div style="display: flex; gap: 8px;">
-          <button class="new-dm-btn" id="friendsBtn">Friends</button>
-          <button class="new-dm-btn" id="settingsBtn">⚙</button>
-          <button class="new-dm-btn" id="newDmBtn">+ New</button>
+        <div class="sidebar-nav">
+          <button class="nav-btn" id="friendsBtn">Friends</button>
+          <button class="nav-btn" id="settingsBtn">Settings</button>
+          <button class="nav-btn" id="newDmBtn">New Chat</button>
         </div>
       </div>
       <div class="conversations-container" id="conversationsList">
@@ -1100,6 +1123,8 @@
       document.getElementById("chatView").style.display = "none";
       document.getElementById("settingsView").style.display = "none";
       document.getElementById("friendsView").style.display = "block";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById("friendsBtn").classList.add('active');
       loadFriends();
     };
 
@@ -1107,6 +1132,14 @@
       document.getElementById("chatView").style.display = "none";
       document.getElementById("friendsView").style.display = "none";
       document.getElementById("settingsView").style.display = "block";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById("settingsBtn").classList.add('active');
+    };
+
+    document.getElementById("newDmBtn").onclick = () => {
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById("newDmBtn").classList.add('active');
+      showNewDmModal();
     };
 
     document.getElementById("backFromSettingsBtn").onclick = () => {
@@ -1114,6 +1147,7 @@
       document.getElementById("friendsView").style.display = "none";
       document.getElementById("chatView").style.display = "flex";
       document.getElementById("chatView").style.flexDirection = "column";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     };
 
     document.getElementById("backToMessagesBtn").onclick = () => {
@@ -1121,6 +1155,7 @@
       document.getElementById("settingsView").style.display = "none";
       document.getElementById("chatView").style.display = "flex";
       document.getElementById("chatView").style.flexDirection = "column";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     };
 
     document.querySelectorAll('.friends-tab').forEach(tab => {
@@ -1348,6 +1383,7 @@
       document.getElementById("settingsView").style.display = "none";
       document.getElementById("chatView").style.display = "flex";
       document.getElementById("chatView").style.flexDirection = "column";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
       
       const members = [auth.currentUser.displayName, friendUsername];
       const conversationId = getConversationId(members);
@@ -1376,8 +1412,6 @@
       }, 500);
     }
 
-    document.getElementById("newDmBtn").onclick = showNewDmModal;
-
     function showNewDmModal() {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
@@ -1388,8 +1422,8 @@
             <label class="modal-label">Group Name (optional for groups)</label>
             <input type="text" class="modal-input" id="groupNameInput" placeholder="Leave empty for DM" />
             
-            <label class="modal-label">Select Friends</label>
-            <input type="text" class="modal-input" id="userSearchInput" placeholder="Search friends..." />
+            <label class="modal-label">Select Users</label>
+            <input type="text" class="modal-input" id="userSearchInput" placeholder="Search users..." />
             <div class="user-select-list" id="userSelectList"></div>
             
             <div class="selected-users" id="selectedUsersList"></div>
