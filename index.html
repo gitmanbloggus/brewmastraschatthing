@@ -234,8 +234,11 @@
     }
     .messages-container {
       flex: 1;
-      overflow-y: auto;
+      overflow-y: scroll !important;
+      overflow-x: hidden;
       padding: 20px;
+      max-height: calc(100vh - 180px);
+      min-height: 200px;
     }
     .message {
       margin-bottom: 16px;
@@ -1227,7 +1230,9 @@
           container.appendChild(div);
         });
         
-        container.scrollTop = container.scrollHeight;
+        setTimeout(() => {
+          container.scrollTop = 999999;
+        }, 50);
       });
     }
 
