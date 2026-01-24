@@ -545,11 +545,12 @@
       gap: 8px;
     }
     .friend-btn {
-      padding: 6px 12px;
+      padding: 8px 16px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
+      font-weight: 500;
       transition: all 0.3s;
     }
     .friend-btn.message {
@@ -558,6 +559,8 @@
     }
     .friend-btn.message:hover {
       background: #ff5555;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(255, 51, 51, 0.3);
     }
     .friend-btn.accept {
       background: #28a745;
@@ -565,20 +568,28 @@
     }
     .friend-btn.accept:hover {
       background: #34ce57;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
     }
     .friend-btn.decline {
-      background: #333;
-      color: white;
+      background: #2a2a2a;
+      color: #dcddde;
+      border: 1px solid #444;
     }
     .friend-btn.decline:hover {
-      background: #444;
+      background: #333;
+      border-color: #666;
     }
     .friend-btn.remove {
-      background: #dc3545;
-      color: white;
+      background: #2a2a2a;
+      color: #ff6b6b;
+      border: 1px solid #ff3333;
     }
     .friend-btn.remove:hover {
-      background: #e74c3c;
+      background: #dc3545;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
     }
     .add-friend-section {
       background: #1a1a1a;
@@ -710,7 +721,6 @@
           </div>
           
           <div class="add-friend-section">
-            <h3>Privacy Settings</h3>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
               <div>
                 <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Allow Non-Friends to Message</div>
@@ -725,7 +735,6 @@
           </div>
 
           <div class="add-friend-section">
-            <h3>Display Settings</h3>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
               <div>
                 <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Show Timestamps</div>
