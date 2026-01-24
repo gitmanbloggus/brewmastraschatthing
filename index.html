@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App</title>
+  <title>Chat App v2</title>
   <style>
     * {
       margin: 0;
@@ -234,10 +234,8 @@
     }
     .messages-container {
       flex: 1;
-      overflow-y: scroll;
+      overflow-y: auto;
       padding: 20px;
-      display: flex;
-      flex-direction: column-reverse;
     }
     .message {
       margin-bottom: 16px;
@@ -770,20 +768,20 @@
         </div>
       </div>
       
-      <div id="chatView">
+      <div id="chatView" style="display: flex; flex-direction: column; height: 100%;">
         <div class="chat-header" id="chatHeader" style="display:none;">
           <div>
             <div class="chat-title" id="chatTitle"></div>
             <div class="chat-members" id="chatMembers"></div>
           </div>
         </div>
-        <div class="messages-container" id="messagesContainer">
+        <div class="messages-container" id="messagesContainer" style="flex: 1; overflow-y: auto;">
           <div class="empty-state">
             <div class="empty-state-title">Welcome!</div>
             <div>Select a conversation or start a new one</div>
           </div>
         </div>
-        <div class="message-input-container" id="messageInputContainer" style="display:none;">
+        <div class="message-input-container" id="messageInputContainer" style="display:none; flex-shrink: 0;">
           <div class="message-input-wrapper">
             <input id="messageInput" placeholder="Type a message..." disabled />
             <button id="sendBtn" class="send-btn" disabled>➤</button>
@@ -1192,7 +1190,7 @@
 
     function startDM(conversationId) {
       if (currentDMListener) currentDMListener();
-      const q = query(collection(db, "dms", conversationId, "messages"), orderBy("createdAt", "desc"));
+      const q = query(collection(db, "dms", conversationId, "messages"), orderBy("createdAt", "asc"));
       currentDMListener = onSnapshot(q, snapshot => {
         const container = document.getElementById("messagesContainer");
         container.innerHTML = "";
@@ -1228,6 +1226,8 @@
           `;
           container.appendChild(div);
         });
+        
+        container.scrollTop = container.scrollHeight;
       });
     }
 
