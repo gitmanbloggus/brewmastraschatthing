@@ -910,6 +910,17 @@
       showTimestamps: true
     };
     const ADMIN_USERNAMES = ['TankaJahari'];
+    let unreadCount = 0;
+    let lastMessageCounts = new Map();
+
+    function updatePageTitle() {
+      const baseTitle = "Chat";
+      if (unreadCount > 0) {
+        document.title = unreadCount >= 9 ? `${baseTitle} (9+)` : `${baseTitle} (${unreadCount})`;
+      } else {
+        document.title = baseTitle;
+      }
+    }
 
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
@@ -1178,18 +1189,37 @@
       const dmsRef = collection(db, "dms");
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
         conversations.clear();
+        unreadCount = 0;
+        
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
           if (data.members && data.members.includes(currentUser)) {
-            conversations.set(docSnap.id, {
-              id: docSnap.id,
+            const convId = docSnap.id;
+            conversations.set(convId, {
+              id: convId,
               members: data.members,
               groupName: data.groupName || null,
               lastMessage: data.lastMessage || null
             });
+            
+            // Count unread messages for conversations that aren't currently open
+            if (convId !== currentConversation) {
+              const messagesRef = collection(db, "dms", convId, "messages");
+              const messagesSnapshot = await getDocs(messagesRef);
+              const currentCount = messagesSnapshot.size;
+              const lastCount = lastMessageCounts.get(convId) || 0;
+              
+              if (currentCount > lastCount) {
+                unreadCount += (currentCount - lastCount);
+              }
+              
+              lastMessageCounts.set(convId, currentCount);
+            }
           }
         }
+        
         updateConversationsList();
+        updatePageTitle();
       });
     }
 
@@ -1271,6 +1301,29 @@
       document.getElementById("messageInputContainer").style.display = "block";
       document.getElementById("messageInput").disabled = false;
       document.getElementById("sendBtn").disabled = false;
+      
+      // Mark current conversation as read
+      const messagesRef = collection(db, "dms", conversationId, "messages");
+      getDocs(messagesRef).then(snapshot => {
+        lastMessageCounts.set(conversationId, snapshot.size);
+        // Recalculate unread count
+        unreadCount = 0;
+        lastMessageCounts.forEach((count, convId) => {
+          if (convId !== currentConversation) {
+            const conv = conversations.get(convId);
+            if (conv) {
+              getDocs(collection(db, "dms", convId, "messages")).then(snap => {
+                const newCount = snap.size;
+                if (newCount > count) {
+                  unreadCount += (newCount - count);
+                  updatePageTitle();
+                }
+              });
+            }
+          }
+        });
+        updatePageTitle();
+      });
       
       updateConversationsList();
       startDM(conversationId);
@@ -1650,8 +1703,11 @@
             <input type="text" class="modal-input" id="groupNameInput" placeholder="Leave empty for DM" />
             
             <label class="modal-label">Select Users</label>
-            <input type="text" class="modal-input" id="userSearchInput" placeholder="Search users..." />
-            <div class="user-select-list" id="userSelectList"></div>
+            <div style="position: relative;">
+              <input type="text" class="modal-input" id="userSearchInput" placeholder="Search users..." autocomplete="off" />
+              <div id="userSearchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 5px;">
+              </div>
+            </div>
             
             <div class="selected-users" id="selectedUsersList"></div>
           </div>
@@ -1695,32 +1751,43 @@
       
       const selectedUsers = new Set();
       const userSearchInput = document.getElementById('userSearchInput');
-      const userSelectList = document.getElementById('userSelectList');
+      const userSearchDropdown = document.getElementById('userSearchDropdown');
       const selectedUsersList = document.getElementById('selectedUsersList');
       
-      function updateUserList(searchTerm = '') {
-        userSelectList.innerHTML = '';
-        const filtered = friendsList.filter(u => 
-          u.toLowerCase().includes(searchTerm.toLowerCase()) && !selectedUsers.has(u)
+      userSearchInput.oninput = () => {
+        const searchTerm = userSearchInput.value.trim().toLowerCase();
+        
+        if (searchTerm.length === 0) {
+          userSearchDropdown.style.display = 'none';
+          return;
+        }
+
+        const matches = friendsList.filter(user => 
+          user.toLowerCase().includes(searchTerm) && !selectedUsers.has(user)
         );
-        filtered.forEach(username => {
+
+        if (matches.length === 0) {
+          userSearchDropdown.innerHTML = '<div class="user-select-item">No users found</div>';
+          userSearchDropdown.style.display = 'block';
+          return;
+        }
+
+        userSearchDropdown.innerHTML = '';
+        matches.forEach(username => {
           const div = document.createElement('div');
           div.className = 'user-select-item';
-          div.innerHTML = `
-            <input type="checkbox" class="user-checkbox" />
-            <span>${username}</span>
-          `;
+          div.textContent = username;
           div.onclick = () => {
             selectedUsers.add(username);
             updateSelectedUsers();
-            updateUserList(userSearchInput.value);
+            userSearchInput.value = '';
+            userSearchDropdown.style.display = 'none';
           };
-          userSelectList.appendChild(div);
+          userSearchDropdown.appendChild(div);
         });
-        if (filtered.length === 0) {
-          userSelectList.innerHTML = '<div style="padding:10px;color:#72767d;text-align:center;">No users found</div>';
-        }
-      }
+
+        userSearchDropdown.style.display = 'block';
+      };
       
       function updateSelectedUsers() {
         selectedUsersList.innerHTML = '';
@@ -1734,14 +1801,10 @@
           tag.querySelector('.remove-user').onclick = () => {
             selectedUsers.delete(username);
             updateSelectedUsers();
-            updateUserList(userSearchInput.value);
           };
           selectedUsersList.appendChild(tag);
         });
       }
-      
-      userSearchInput.oninput = (e) => updateUserList(e.target.value);
-      updateUserList();
       
       document.getElementById('createConvBtn').onclick = async () => {
         if (selectedUsers.size === 0) {
@@ -1764,6 +1827,18 @@
           showToast("Failed to create conversation", "error");
         }
       };
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!userSearchInput.contains(e.target) && !userSearchDropdown.contains(e.target)) {
+          userSearchDropdown.style.display = 'none';
+        }
+        // Remove listener when modal is closed
+        const modal = document.querySelector('.modal-overlay');
+        if (!modal) {
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
     }
 
     function leaveConversation(conversationId) {
