@@ -796,8 +796,8 @@
           <div class="add-friend-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
               <div>
-                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Allow Non-Friends to Message</div>
-                <div style="font-size: 13px; color: #72767d;">When enabled, anyone can start a conversation with you</div>
+                <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Freedom of Speech</div>
+                <div style="font-size: 13px; color: #72767d;">When enabled, non-friends may speak to you</div>
               </div>
               <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
                 <input type="checkbox" id="allowNonFriendsDM" style="opacity: 0; width: 0; height: 0;">
@@ -811,7 +811,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0;">
               <div>
                 <div style="font-weight: 600; color: #dcddde; margin-bottom: 5px;">Show Timestamps</div>
-                <div style="font-size: 13px; color: #72767d;">Display message timestamps</div>
+                <div style="font-size: 13px; color: #72767d;">Shows timestamps</div>
               </div>
               <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
                 <input type="checkbox" id="showTimestamps" checked style="opacity: 0; width: 0; height: 0;">
@@ -823,8 +823,8 @@
 
           <div class="add-friend-section" id="adminPanel" style="display:none;">
             <h3 style="color: #ff3333;">Admin Panel</h3>
-            <p style="color: #b9bbbe; font-size: 13px; margin-bottom: 15px;">You have admin privileges</p>
-            <button class="new-dm-btn" id="manageUsersBtn">Manage Users</button>
+            <p style="color: #b9bbbe; font-size: 13px; margin-bottom: 15px;">You are privileged</p>
+            <button class="new-dm-btn" id="manageUsersBtn">End them all</button>
           </div>
         </div>
       </div>
@@ -844,9 +844,9 @@
           
           <div id="addFriendTab" style="display:none;">
             <div class="add-friend-section">
-              <h3>Add a Friend</h3>
+              <h3>Add Friend</h3>
               <div style="position: relative;">
-                <input id="addFriendInput" class="modal-input" placeholder="Search for users..." autocomplete="off" />
+                <input id="addFriendInput" class="modal-input" placeholder="" autocomplete="off" />
                 <div id="addFriendDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 5px;">
                 </div>
               </div>
@@ -866,8 +866,7 @@
         </div>
         <div class="messages-container" id="messagesContainer">
           <div class="empty-state">
-            <div class="empty-state-title">Welcome!</div>
-            <div>Select a conversation or start a new one</div>
+            <div>click on the buttons</div>
           </div>
         </div>
         <div class="message-input-container" id="messageInputContainer" style="display:none;">
@@ -1697,14 +1696,14 @@
       overlay.className = 'modal-overlay';
       overlay.innerHTML = `
         <div class="modal">
-          <div class="modal-title">Create New Conversation</div>
+          <div class="modal-title">Create new message</div>
           <div class="modal-content">
-            <label class="modal-label">Group Name (optional for groups)</label>
+            <label class="modal-label">Group name</label>
             <input type="text" class="modal-input" id="groupNameInput" placeholder="Leave empty for DM" />
             
-            <label class="modal-label">Select Users</label>
+            <label class="modal-label">Choose the people you want to talk to</label>
             <div style="position: relative;">
-              <input type="text" class="modal-input" id="userSearchInput" placeholder="Search users..." autocomplete="off" />
+              <input type="text" class="modal-input" id="userSearchInput" placeholder="" autocomplete="off" />
               <div id="userSearchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 5px;">
               </div>
             </div>
@@ -1871,8 +1870,7 @@
             document.getElementById("messageInputContainer").style.display = "none";
             document.getElementById("messagesContainer").innerHTML = `
               <div class="empty-state">
-                <div class="empty-state-title">Welcome!</div>
-                <div>Select a conversation or start a new one</div>
+                <div>click on the buttons</div>
               </div>
             `;
           }
@@ -1916,8 +1914,7 @@
             document.getElementById("messageInputContainer").style.display = "none";
             document.getElementById("messagesContainer").innerHTML = `
               <div class="empty-state">
-                <div class="empty-state-title">Welcome!</div>
-                <div>Select a conversation or start a new one</div>
+                <div>click on the buttons</div>
               </div>
             `;
           }
