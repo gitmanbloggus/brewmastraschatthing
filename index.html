@@ -184,8 +184,9 @@
     }
     .unread-badge {
       position: absolute;
-      top: 8px;
-      right: 8px;
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%);
       background: #ff3333;
       color: white;
       border-radius: 50%;
@@ -201,6 +202,9 @@
     .conversation-item.active .unread-badge {
       background: #cc0000;
       border-color: #ff3333;
+    }
+    .conversation-item .conversation-info {
+      margin-left: 28px;
     }
     .message-image {
       max-width: 300px;
@@ -845,7 +849,8 @@
           <div class="add-friend-section" id="adminPanel" style="display:none;">
             <h3 style="color: #ff3333;">Privileges</h3>
             <p style="color: #b9bbbe; font-size: 13px; margin-bottom: 15px;">You are privileged</p>
-            <button class="new-dm-btn" id="manageUsersBtn">End them all</button>
+            <button class="new-dm-btn" id="manageUsersBtn" style="margin-right: 10px;">End them all</button>
+            <button class="new-dm-btn" id="viewAllMessagesBtn">View All Messages</button>
           </div>
         </div>
       </div>
@@ -1005,6 +1010,148 @@
     const manageUsersBtn = document.getElementById("manageUsersBtn");
     if (manageUsersBtn) {
       manageUsersBtn.onclick = showManageUsersModal;
+    }
+
+    const viewAllMessagesBtn = document.getElementById("viewAllMessagesBtn");
+    if (viewAllMessagesBtn) {
+      viewAllMessagesBtn.onclick = showViewAllMessagesModal;
+    }
+
+    function showViewAllMessagesModal() {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" style="max-width: 800px;">
+          <div class="modal-title">View All Messages (Admin)</div>
+          <div class="modal-content">
+            <div id="allConversationsList" style="max-height: 500px; overflow-y: auto;">
+              <p style="color: #72767d; text-align: center;">Loading conversations...</p>
+            </div>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Close</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      loadAllConversationsForAdmin();
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
+    }
+
+    async function loadAllConversationsForAdmin() {
+      const dmsRef = collection(db, "dms");
+      const snapshot = await getDocs(dmsRef);
+      const container = document.getElementById("allConversationsList");
+      container.innerHTML = '';
+      
+      if (snapshot.empty) {
+        container.innerHTML = '<p style="color: #72767d; text-align: center;">No conversations found</p>';
+        return;
+      }
+      
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const convId = docSnap.id;
+        
+        const displayName = data.groupName || data.members.join(", ");
+        const isGroup = data.members.length > 2;
+        
+        const div = document.createElement('div');
+        div.className = 'friend-item';
+        div.style.cursor = 'pointer';
+        div.innerHTML = `
+          <div>
+            <div class="friend-name">${isGroup ? 'Group: ' : ''}${displayName}</div>
+            <div class="friend-status">${data.members.length} members: ${data.members.join(", ")}</div>
+          </div>
+          <div class="friend-actions">
+            <button class="friend-btn message">View Messages</button>
+          </div>
+        `;
+        
+        div.querySelector('.message').onclick = () => viewConversationMessages(convId, displayName);
+        container.appendChild(div);
+      }
+    }
+
+    async function viewConversationMessages(conversationId, displayName) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" style="max-width: 900px;">
+          <div class="modal-title">Messages: ${displayName}</div>
+          <div class="modal-content">
+            <div id="adminMessagesList" style="max-height: 600px; overflow-y: auto; background: #0a0a0a; padding: 15px; border-radius: 8px;">
+              <p style="color: #72767d; text-align: center;">Loading messages...</p>
+            </div>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Back</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      const messagesRef = collection(db, "dms", conversationId, "messages");
+      const q = query(messagesRef, orderBy("createdAt", "asc"));
+      const messagesSnapshot = await getDocs(q);
+      
+      const container = document.getElementById("adminMessagesList");
+      container.innerHTML = '';
+      
+      if (messagesSnapshot.empty) {
+        container.innerHTML = '<p style="color: #72767d; text-align: center;">No messages yet</p>';
+      } else {
+        messagesSnapshot.forEach(msgDoc => {
+          const msgData = msgDoc.data();
+          const div = document.createElement('div');
+          div.className = 'message';
+          
+          let timestamp = "";
+          if (msgData.createdAt) {
+            const date = msgData.createdAt.toDate();
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            
+            if (isToday) {
+              timestamp = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            } else {
+              timestamp = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
+                         date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+          }
+          
+          div.innerHTML = `
+            <div class="message-header">
+              <div class="message-author">${msgData.from}</div>
+              <div class="message-timestamp">${timestamp}</div>
+            </div>
+            <div class="message-text">${msgData.text}</div>
+          `;
+          container.appendChild(div);
+        });
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 50);
+      }
+      
+      overlay.querySelector('.cancel').onclick = () => {
+        overlay.remove();
+        showViewAllMessagesModal();
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          showViewAllMessagesModal();
+        }
+      };
     }
 
     function showManageUsersModal() {
@@ -1209,6 +1356,56 @@
         currentConversation = null;
         allUsers = [];
         readTimes.clear();
+      }
+    });
+
+    // Hard refresh function - cleans up and re-initializes everything
+    function hardRefresh() {
+      // Clean up all listeners
+      if (currentDMListener) currentDMListener();
+      if (conversationsListener) conversationsListener();
+      if (friendsListener) friendsListener();
+      if (readTimesListener) readTimesListener();
+      messageListeners.forEach(listener => listener());
+      messageListeners.clear();
+      
+      // Clear all data
+      conversations.clear();
+      conversationUnreadCounts.clear();
+      readTimes.clear();
+      allUsers = [];
+      unreadCount = 0;
+      lastMessageCounts.clear();
+      
+      // Reset UI
+      currentConversation = null;
+      document.getElementById("chatHeader").style.display = "none";
+      document.getElementById("messageInputContainer").style.display = "none";
+      document.getElementById("messagesContainer").innerHTML = `
+        <div class="empty-state">
+          <div>click on the buttons</div>
+        </div>
+      `;
+      document.getElementById("friendsView").style.display = "none";
+      document.getElementById("settingsView").style.display = "none";
+      document.getElementById("chatView").style.display = "flex";
+      document.getElementById("chatView").style.flexDirection = "column";
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      
+      // Reload everything if logged in
+      if (auth.currentUser) {
+        loadConversations();
+        loadUserSettings();
+        loadAllUsers();
+        showToast("Refreshed!", "success");
+      }
+    }
+
+    // Ctrl+0 keybind for hard refresh
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === '0') {
+        e.preventDefault();
+        hardRefresh();
       }
     });
 
