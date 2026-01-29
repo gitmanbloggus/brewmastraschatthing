@@ -132,6 +132,7 @@
       justify-content: space-between;
       align-items: center;
       color: #b9bbbe;
+      position: relative;
     }
     .conversation-item:hover {
       background: #2a2a2a;
@@ -180,6 +181,29 @@
     .conversation-item.active .delete-conversation {
       color: white;
       opacity: 1;
+    }
+    .unread-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #ff3333;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      border: 2px solid #1a1a1a;
+    }
+    .conversation-item.active .unread-badge {
+      background: #cc0000;
+      border-color: #ff3333;
+    }
+    .conversation-item:hover .unread-badge {
+      opacity: 0;
     }
     .message-image {
       max-width: 300px;
@@ -882,7 +906,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, deleteDoc, updateDoc, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where, serverTimestamp, deleteDoc, updateDoc, arrayRemove, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBzt2lJe_cIK_U7Uh88Wun73dG7GxQMYh4",
@@ -911,6 +935,7 @@
     const ADMIN_USERNAMES = ['TankaJahari'];
     let unreadCount = 0;
     let lastMessageCounts = new Map();
+    let conversationUnreadCounts = new Map(); // NEW: Track unread per conversation
 
     function updatePageTitle() {
       const baseTitle = "Chat";
@@ -1183,12 +1208,47 @@
       }
     });
 
+    // NEW: Load last read times for user
+    async function loadLastReadTimes() {
+      const currentUser = auth.currentUser.displayName;
+      const readTimesRef = collection(db, "readTimes");
+      const q = query(readTimesRef, where("userId", "==", currentUser));
+      const snapshot = await getDocs(q);
+      
+      const readTimes = new Map();
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        readTimes.set(data.conversationId, data.lastRead?.toMillis() || 0);
+      });
+      return readTimes;
+    }
+
+    // NEW: Update last read time when opening a conversation
+    async function markConversationAsRead(conversationId) {
+      const currentUser = auth.currentUser.displayName;
+      const readTimeId = `${currentUser}_${conversationId}`;
+      
+      try {
+        await setDoc(doc(db, "readTimes", readTimeId), {
+          userId: currentUser,
+          conversationId: conversationId,
+          lastRead: serverTimestamp()
+        });
+      } catch (error) {
+        console.log("Failed to update read time:", error);
+      }
+    }
+
     function loadConversations() {
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
       conversationsListener = onSnapshot(dmsRef, async snapshot => {
         conversations.clear();
         unreadCount = 0;
+        conversationUnreadCounts.clear();
+        
+        // Load read times
+        const readTimes = await loadLastReadTimes();
         
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
@@ -1201,18 +1261,28 @@
               lastMessage: data.lastMessage || null
             });
             
-            // Count unread messages for conversations that aren't currently open
+            // Count unread messages
             if (convId !== currentConversation) {
               const messagesRef = collection(db, "dms", convId, "messages");
               const messagesSnapshot = await getDocs(messagesRef);
-              const currentCount = messagesSnapshot.size;
-              const lastCount = lastMessageCounts.get(convId) || 0;
               
-              if (currentCount > lastCount) {
-                unreadCount += (currentCount - lastCount);
+              const lastReadTime = readTimes.get(convId) || 0;
+              let unreadForConv = 0;
+              
+              messagesSnapshot.forEach(msgDoc => {
+                const msgData = msgDoc.data();
+                const msgTime = msgData.createdAt?.toMillis() || 0;
+                
+                // Count as unread if message is after last read time and not from current user
+                if (msgTime > lastReadTime && msgData.from !== currentUser) {
+                  unreadForConv++;
+                }
+              });
+              
+              if (unreadForConv > 0) {
+                conversationUnreadCounts.set(convId, unreadForConv);
+                unreadCount += unreadForConv;
               }
-              
-              lastMessageCounts.set(convId, currentCount);
             }
           }
         }
@@ -1253,10 +1323,16 @@
           html += `<div class="conversation-members">${conv.members.length} members</div>`;
         }
         
-        html += `
-          </div>
-          <button class="delete-conversation">×</button>
-        `;
+        html += `</div>`;
+        
+        // NEW: Add unread badge if there are unread messages
+        const unreadForConv = conversationUnreadCounts.get(conv.id) || 0;
+        if (unreadForConv > 0) {
+          const displayCount = unreadForConv > 9 ? '9+' : unreadForConv;
+          html += `<div class="unread-badge">${displayCount}</div>`;
+        }
+        
+        html += `<button class="delete-conversation">×</button>`;
         
         div.innerHTML = html;
         
@@ -1274,7 +1350,7 @@
       });
     }
 
-    function selectConversation(conversationId) {
+    async function selectConversation(conversationId) {
       currentConversation = conversationId;
       const conv = conversations.get(conversationId);
       const currentUser = auth.currentUser.displayName;
@@ -1301,30 +1377,16 @@
       document.getElementById("messageInput").disabled = false;
       document.getElementById("sendBtn").disabled = false;
       
-      // Mark current conversation as read
-      const messagesRef = collection(db, "dms", conversationId, "messages");
-      getDocs(messagesRef).then(snapshot => {
-        lastMessageCounts.set(conversationId, snapshot.size);
-        // Recalculate unread count
-        unreadCount = 0;
-        lastMessageCounts.forEach((count, convId) => {
-          if (convId !== currentConversation) {
-            const conv = conversations.get(convId);
-            if (conv) {
-              getDocs(collection(db, "dms", convId, "messages")).then(snap => {
-                const newCount = snap.size;
-                if (newCount > count) {
-                  unreadCount += (newCount - count);
-                  updatePageTitle();
-                }
-              });
-            }
-          }
-        });
-        updatePageTitle();
-      });
+      // NEW: Mark conversation as read
+      await markConversationAsRead(conversationId);
+      
+      // Remove unread count for this conversation
+      const prevUnread = conversationUnreadCounts.get(conversationId) || 0;
+      conversationUnreadCounts.delete(conversationId);
+      unreadCount = Math.max(0, unreadCount - prevUnread);
       
       updateConversationsList();
+      updatePageTitle();
       startDM(conversationId);
     }
 
@@ -1370,6 +1432,11 @@
         setTimeout(() => {
           container.scrollTop = 999999;
         }, 50);
+        
+        // NEW: Update read time when new messages arrive (if conversation is open)
+        if (currentConversation === conversationId) {
+          markConversationAsRead(conversationId);
+        }
       });
     }
 
@@ -1395,6 +1462,9 @@
           createdAt: serverTimestamp()
         });
         document.getElementById("messageInput").value = "";
+        
+        // NEW: Mark as read after sending
+        await markConversationAsRead(currentConversation);
       } catch (error) {
         showToast("Failed to send message", "error");
       }
