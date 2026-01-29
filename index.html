@@ -202,9 +202,6 @@
       background: #cc0000;
       border-color: #ff3333;
     }
-    .conversation-item:hover .unread-badge {
-      opacity: 0;
-    }
     .message-image {
       max-width: 300px;
       max-height: 300px;
@@ -1282,11 +1279,14 @@
 
     async function recalculateUnreadCounts() {
       const currentUser = auth.currentUser.displayName;
-      unreadCount = 0;
-      conversationUnreadCounts.clear();
+      let totalUnread = 0;
       
       for (const [convId, conv] of conversations) {
-        if (convId === currentConversation) continue;
+        if (convId === currentConversation) {
+          // Current conversation should have no unread
+          conversationUnreadCounts.delete(convId);
+          continue;
+        }
         
         const messagesRef = collection(db, "dms", convId, "messages");
         const messagesSnapshot = await getDocs(messagesRef);
@@ -1306,10 +1306,13 @@
         
         if (unreadForConv > 0) {
           conversationUnreadCounts.set(convId, unreadForConv);
-          unreadCount += unreadForConv;
+          totalUnread += unreadForConv;
+        } else {
+          conversationUnreadCounts.delete(convId);
         }
       }
       
+      unreadCount = totalUnread;
       updateConversationsList();
       updatePageTitle();
     }
