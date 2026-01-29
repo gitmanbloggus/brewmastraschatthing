@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat</title>
+  <title>Chat App v2</title>
   <style>
     * {
       margin: 0;
@@ -945,7 +945,7 @@
     function updatePageTitle() {
       const baseTitle = "Chat";
       if (unreadCount > 0) {
-        document.title = `🔴 ${baseTitle}`;
+        document.title = unreadCount >= 9 ? `${baseTitle} (9+)` : `${baseTitle} (${unreadCount})`;
       } else {
         document.title = baseTitle;
       }
