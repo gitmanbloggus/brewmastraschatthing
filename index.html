@@ -81,6 +81,7 @@
       display: flex;
       flex-direction: column;
       border-right: 1px solid #0a0a0a;
+      position: relative;
     }
     .sidebar-header {
       padding: 15px;
@@ -291,6 +292,11 @@
       color: #ff3333;
       font-weight: 600;
       font-size: 14px;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+    .username-display:hover {
+      color: #ff5555;
     }
     .logout-btn {
       background: #333;
@@ -775,6 +781,82 @@
     .new-dm-btn:hover {
       background: #ff5555;
     }
+    .profile-modal {
+      position: absolute;
+      bottom: 70px;
+      left: 15px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255,0,0,0.5);
+      width: 280px;
+      z-index: 1000;
+      display: none;
+    }
+    .profile-modal.show {
+      display: block;
+    }
+    .profile-modal-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .profile-modal-field {
+      margin-bottom: 15px;
+    }
+    .profile-modal-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #b9bbbe;
+      margin-bottom: 6px;
+    }
+    .profile-modal-input {
+      width: 100%;
+      padding: 8px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #dcddde;
+      font-size: 14px;
+    }
+    .profile-modal-input:focus {
+      outline: none;
+      border-color: #ff3333;
+    }
+    .profile-modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+    .profile-modal-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+    .profile-modal-btn.save {
+      background: #ff3333;
+      color: white;
+    }
+    .profile-modal-btn.save:hover {
+      background: #ff5555;
+    }
+    .profile-modal-btn.cancel {
+      background: #333;
+      color: #dcddde;
+    }
+    .profile-modal-btn.cancel:hover {
+      background: #444;
+    }
   </style>
 </head>
 <body>
@@ -807,6 +889,20 @@
       <div class="user-info">
         <div class="username-display" id="usernameDisplay"></div>
         <button class="logout-btn" id="logoutBtn">Logout</button>
+      </div>
+      
+      <!-- Profile Modal -->
+      <div class="profile-modal" id="profileModal">
+        <div class="profile-modal-header">Edit Profile</div>
+        <div class="profile-modal-field">
+          <label class="profile-modal-label">Username</label>
+          <input type="text" class="profile-modal-input" id="profileUsernameInput" placeholder="Enter new username" />
+          <div style="font-size: 11px; color: #72767d; margin-top: 4px;">This will update your display name everywhere</div>
+        </div>
+        <div class="profile-modal-buttons">
+          <button class="profile-modal-btn cancel" id="profileCancelBtn">Cancel</button>
+          <button class="profile-modal-btn save" id="profileSaveBtn">Save</button>
+        </div>
       </div>
     </div>
     
@@ -941,6 +1037,7 @@
     let lastMessageCounts = new Map();
     let conversationUnreadCounts = new Map();
     let readTimes = new Map();
+    let profileModalOpen = false;
 
     function updatePageTitle() {
       const baseTitle = "Chat";
@@ -1136,7 +1233,6 @@
           container.appendChild(div);
         });
         
-        // Scroll to bottom
         setTimeout(() => {
           container.scrollTop = container.scrollHeight;
         }, 50);
@@ -1286,6 +1382,147 @@
       });
     }
 
+    // Profile Modal Event Listeners
+    document.getElementById("usernameDisplay").onclick = (e) => {
+      e.stopPropagation();
+      const modal = document.getElementById("profileModal");
+      const input = document.getElementById("profileUsernameInput");
+      
+      if (profileModalOpen) {
+        modal.classList.remove('show');
+        profileModalOpen = false;
+      } else {
+        input.value = auth.currentUser.displayName;
+        modal.classList.add('show');
+        profileModalOpen = true;
+      }
+    };
+
+    document.getElementById("profileCancelBtn").onclick = () => {
+      document.getElementById("profileModal").classList.remove('show');
+      profileModalOpen = false;
+    };
+
+    document.getElementById("profileSaveBtn").onclick = async () => {
+      const newUsername = document.getElementById("profileUsernameInput").value.trim();
+      
+      if (!newUsername) {
+        showToast("Username cannot be empty", "error");
+        return;
+      }
+      
+      if (newUsername === auth.currentUser.displayName) {
+        showToast("That's already your username", "warning");
+        return;
+      }
+      
+      if (newUsername.length < 3) {
+        showToast("Username must be at least 3 characters", "error");
+        return;
+      }
+      
+      if (newUsername.length > 20) {
+        showToast("Username must be less than 20 characters", "error");
+        return;
+      }
+      
+      try {
+        // Check if username is taken
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", newUsername));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+          showToast("Username already taken", "error");
+          return;
+        }
+        
+        const oldUsername = auth.currentUser.displayName;
+        
+        // Update auth profile
+        await updateProfile(auth.currentUser, { displayName: newUsername });
+        
+        // Update user document
+        await setDoc(doc(db, "users", auth.currentUser.uid), { username: newUsername });
+        
+        // Update all conversations where user is a member
+        const dmsRef = collection(db, "dms");
+        const dmsSnapshot = await getDocs(dmsRef);
+        
+        for (const dmDoc of dmsSnapshot.docs) {
+          const data = dmDoc.data();
+          if (data.members && data.members.includes(oldUsername)) {
+            const updatedMembers = data.members.map(m => m === oldUsername ? newUsername : m);
+            await updateDoc(dmDoc.ref, { members: updatedMembers });
+          }
+        }
+        
+        // Update all messages from this user
+        for (const dmDoc of dmsSnapshot.docs) {
+          const messagesRef = collection(db, "dms", dmDoc.id, "messages");
+          const messagesSnapshot = await getDocs(messagesRef);
+          
+          for (const msgDoc of messagesSnapshot.docs) {
+            const msgData = msgDoc.data();
+            if (msgData.from === oldUsername) {
+              await updateDoc(msgDoc.ref, { from: newUsername });
+            }
+          }
+        }
+        
+        // Update friend requests
+        const friendRequestsRef = collection(db, "friendRequests");
+        const friendsSnapshot = await getDocs(friendRequestsRef);
+        
+        for (const friendDoc of friendsSnapshot.docs) {
+          const data = friendDoc.data();
+          const updates = {};
+          
+          if (data.from === oldUsername) updates.from = newUsername;
+          if (data.to === oldUsername) updates.to = newUsername;
+          
+          if (Object.keys(updates).length > 0) {
+            await updateDoc(friendDoc.ref, updates);
+          }
+        }
+        
+        // Update read times
+        const readTimesRef = collection(db, "readTimes");
+        const readTimesSnapshot = await getDocs(query(readTimesRef, where("userId", "==", oldUsername)));
+        
+        for (const readDoc of readTimesSnapshot.docs) {
+          await updateDoc(readDoc.ref, { userId: newUsername });
+        }
+        
+        // Update UI
+        document.getElementById("usernameDisplay").textContent = newUsername;
+        document.getElementById("profileModal").classList.remove('show');
+        profileModalOpen = false;
+        
+        showToast("Username updated successfully!", "success");
+        
+        // Refresh to show updated data
+        setTimeout(() => {
+          hardRefresh();
+        }, 1000);
+        
+      } catch (error) {
+        console.error("Error updating username:", error);
+        showToast("Failed to update username", "error");
+      }
+    };
+
+    // Close profile modal when clicking outside
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById("profileModal");
+      const usernameDisplay = document.getElementById("usernameDisplay");
+      
+      if (profileModalOpen && !modal.contains(e.target) && !usernameDisplay.contains(e.target)) {
+        modal.classList.remove('show');
+        profileModalOpen = false;
+      }
+    });
+
     document.getElementById("registerBtn").onclick = async () => {
       try {
         const username = document.getElementById("username").value.trim();
@@ -1359,9 +1596,7 @@
       }
     });
 
-    // Hard refresh function - cleans up and re-initializes everything
     function hardRefresh() {
-      // Clean up all listeners
       if (currentDMListener) currentDMListener();
       if (conversationsListener) conversationsListener();
       if (friendsListener) friendsListener();
@@ -1369,7 +1604,6 @@
       messageListeners.forEach(listener => listener());
       messageListeners.clear();
       
-      // Clear all data
       conversations.clear();
       conversationUnreadCounts.clear();
       readTimes.clear();
@@ -1377,7 +1611,6 @@
       unreadCount = 0;
       lastMessageCounts.clear();
       
-      // Reset UI
       currentConversation = null;
       document.getElementById("chatHeader").style.display = "none";
       document.getElementById("messageInputContainer").style.display = "none";
@@ -1392,7 +1625,6 @@
       document.getElementById("chatView").style.flexDirection = "column";
       document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
       
-      // Reload everything if logged in
       if (auth.currentUser) {
         loadConversations();
         loadUserSettings();
@@ -1401,7 +1633,6 @@
       }
     }
 
-    // Ctrl+0 keybind for hard refresh
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === '0') {
         e.preventDefault();
@@ -1409,7 +1640,6 @@
       }
     });
 
-    // NEW: Update last read time when opening a conversation
     async function markConversationAsRead(conversationId) {
       const currentUser = auth.currentUser.displayName;
       const readTimeId = `${currentUser}_${conversationId}`;
@@ -1429,7 +1659,6 @@
       const currentUser = auth.currentUser.displayName;
       const dmsRef = collection(db, "dms");
       
-      // Listen to read times in real-time
       const readTimesRef = collection(db, "readTimes");
       const readTimesQuery = query(readTimesRef, where("userId", "==", currentUser));
       readTimesListener = onSnapshot(readTimesQuery, snapshot => {
@@ -1437,14 +1666,12 @@
           const data = docSnap.data();
           readTimes.set(data.conversationId, data.lastRead?.toMillis() || 0);
         });
-        // Recalculate unread counts whenever read times update
         recalculateUnreadCounts();
       });
       
       conversationsListener = onSnapshot(dmsRef, snapshot => {
         conversations.clear();
         
-        // Clear old message listeners
         messageListeners.forEach(listener => listener());
         messageListeners.clear();
         
@@ -1459,11 +1686,9 @@
               lastMessage: data.lastMessage || null
             });
             
-            // Listen to messages in real-time for each conversation
             const messagesRef = collection(db, "dms", convId, "messages");
             const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
             const unsubscribe = onSnapshot(messagesQuery, () => {
-              // Recalculate unread when messages change
               recalculateUnreadCounts();
             });
             messageListeners.set(convId, unsubscribe);
@@ -1480,7 +1705,6 @@
       
       for (const [convId, conv] of conversations) {
         if (convId === currentConversation) {
-          // Current conversation should have no unread
           conversationUnreadCounts.delete(convId);
           continue;
         }
@@ -1495,7 +1719,6 @@
           const msgData = msgDoc.data();
           const msgTime = msgData.createdAt?.toMillis() || 0;
           
-          // Count as unread if message is after last read time and not from current user
           if (msgTime > lastReadTime && msgData.from !== currentUser) {
             unreadForConv++;
           }
@@ -1547,7 +1770,6 @@
         
         html += `</div>`;
         
-        // NEW: Add unread badge if there are unread messages
         const unreadForConv = conversationUnreadCounts.get(conv.id) || 0;
         if (unreadForConv > 0) {
           const displayCount = unreadForConv > 9 ? '9+' : unreadForConv;
@@ -1599,10 +1821,8 @@
       document.getElementById("messageInput").disabled = false;
       document.getElementById("sendBtn").disabled = false;
       
-      // NEW: Mark conversation as read
       await markConversationAsRead(conversationId);
       
-      // Remove unread count for this conversation
       const prevUnread = conversationUnreadCounts.get(conversationId) || 0;
       conversationUnreadCounts.delete(conversationId);
       unreadCount = Math.max(0, unreadCount - prevUnread);
@@ -1655,7 +1875,6 @@
           container.scrollTop = 999999;
         }, 50);
         
-        // NEW: Update read time when new messages arrive (if conversation is open)
         if (currentConversation === conversationId) {
           markConversationAsRead(conversationId);
         }
@@ -1685,7 +1904,6 @@
         });
         document.getElementById("messageInput").value = "";
         
-        // NEW: Mark as read after sending
         await markConversationAsRead(currentConversation);
       } catch (error) {
         showToast("Failed to send message", "error");
@@ -2119,12 +2337,10 @@
         }
       };
       
-      // Close dropdown when clicking outside
       document.addEventListener('click', function closeDropdown(e) {
         if (!userSearchInput.contains(e.target) && !userSearchDropdown.contains(e.target)) {
           userSearchDropdown.style.display = 'none';
         }
-        // Remove listener when modal is closed
         const modal = document.querySelector('.modal-overlay');
         if (!modal) {
           document.removeEventListener('click', closeDropdown);
