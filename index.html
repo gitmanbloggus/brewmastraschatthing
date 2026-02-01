@@ -384,6 +384,38 @@
       color: #dcddde;
       word-wrap: break-word;
     }
+    .message-actions {
+      display: none;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .message:hover .message-actions {
+      display: flex;
+    }
+    .message-action-btn {
+      background: #2a2a2a;
+      color: #b9bbbe;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+    .message-action-btn:hover {
+      background: #ff3333;
+      color: white;
+    }
+    .message-edited {
+      font-size: 10px;
+      color: #72767d;
+      font-style: italic;
+      margin-left: 4px;
+    }
+    .message-deleted {
+      opacity: 0.5;
+      font-style: italic;
+    }
     .message-input-container {
       padding: 20px;
       background: #1a1a1a;
@@ -861,7 +893,7 @@
 </head>
 <body>
   <div id="auth">
-    <h2>Tanka Jahari's Communication Service</h2>
+    <h2>Welcome</h2>
     <input id="username" placeholder="Username" />
     <input id="password" type="password" placeholder="Password" />
     <button id="loginBtn">Login</button>
@@ -897,7 +929,7 @@
         <div class="profile-modal-field">
           <label class="profile-modal-label">Display Name</label>
           <input type="text" class="profile-modal-input" id="profileUsernameInput" placeholder="Enter new display name" />
-          <div style="font-size: 11px; color: #72767d; margin-top: 4px;">This is what people will see when messaging you, but your login info will stay as username</div>
+          <div style="font-size: 11px; color: #72767d; margin-top: 4px;">This is what everyone sees. Login username stays the same.</div>
         </div>
         <div class="profile-modal-buttons">
           <button class="profile-modal-btn cancel" id="profileCancelBtn">Cancel</button>
@@ -1038,6 +1070,8 @@
     let conversationUnreadCounts = new Map();
     let readTimes = new Map();
     let profileModalOpen = false;
+    let editingMessageId = null;
+    let editingMessageText = "";
 
     function updatePageTitle() {
       const baseTitle = "Chat";
@@ -1213,6 +1247,11 @@
           const div = document.createElement('div');
           div.className = 'message';
           
+          if (msgData.deleted) {
+            div.style.background = '#3a0a0a';
+            div.style.borderLeft = '3px solid #ff6666';
+          }
+          
           let timestamp = "";
           if (msgData.createdAt) {
             const date = msgData.createdAt.toDate();
@@ -1227,12 +1266,63 @@
             }
           }
           
+          let messageContent = '';
+          
+          // Show deleted status
+          if (msgData.deleted) {
+            messageContent += `<div style="color: #ff6666; font-weight: 600; margin-bottom: 4px;">[DELETED MESSAGE]</div>`;
+            if (msgData.deletedAt) {
+              const deletedDate = msgData.deletedAt.toDate();
+              const deletedTime = deletedDate.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+              });
+              messageContent += `<div style="color: #72767d; font-size: 11px; margin-bottom: 8px;">Deleted at: ${deletedTime}</div>`;
+            }
+          }
+          
+          // Show original message if edited
+          if (msgData.edited && msgData.originalText) {
+            messageContent += `
+              <div style="background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
+                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">ORIGINAL:</div>
+                <div style="color: #b9bbbe;">${msgData.originalText}</div>
+              </div>
+            `;
+          }
+          
+          // Show current/edited message
+          if (msgData.edited) {
+            messageContent += `
+              <div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">
+                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">EDITED:</div>
+                <div style="color: #dcddde;">${msgData.text}</div>
+              </div>
+            `;
+            if (msgData.editedAt) {
+              const editedDate = msgData.editedAt.toDate();
+              const editedTime = editedDate.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+              });
+              messageContent += `<div style="color: #72767d; font-size: 11px; margin-top: 4px;">Edited at: ${editedTime}</div>`;
+            }
+          } else {
+            messageContent += `<div style="color: #dcddde;">${msgData.text}</div>`;
+          }
+          
           div.innerHTML = `
             <div class="message-header">
               <div class="message-author">${msgData.from}</div>
               <div class="message-timestamp">${timestamp}</div>
             </div>
-            <div class="message-text">${msgData.text}</div>
+            <div class="message-text">${messageContent}</div>
           `;
           container.appendChild(div);
         });
@@ -1842,10 +1932,14 @@
         
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
+          const messageId = docSnap.id;
           const div = document.createElement("div");
           div.className = "message";
           if (data.from === auth.currentUser?.displayName) {
             div.classList.add("own");
+          }
+          if (data.deleted) {
+            div.classList.add("message-deleted");
           }
           
           let timestamp = "";
@@ -1862,13 +1956,31 @@
             }
           }
           
+          const messageText = data.deleted ? "[Message deleted]" : data.text;
+          const editedIndicator = data.edited ? '<span class="message-edited">(edited)</span>' : '';
+          
           div.innerHTML = `
             <div class="message-header">
               <div class="message-author">${data.from}</div>
-              <div class="message-timestamp">${timestamp}</div>
+              <div class="message-timestamp">${timestamp}${editedIndicator}</div>
             </div>
-            <div class="message-text">${data.text}</div>
+            <div class="message-text">${messageText}</div>
           `;
+          
+          // Add edit/delete buttons only for own messages that aren't deleted
+          if (data.from === auth.currentUser?.displayName && !data.deleted) {
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            actionsDiv.innerHTML = `
+              <button class="message-action-btn edit-btn">Edit</button>
+              <button class="message-action-btn delete-btn">Delete</button>
+            `;
+            div.appendChild(actionsDiv);
+            
+            actionsDiv.querySelector('.edit-btn').onclick = () => startEditMessage(conversationId, messageId, data.text);
+            actionsDiv.querySelector('.delete-btn').onclick = () => deleteMessage(conversationId, messageId);
+          }
+          
           container.appendChild(div);
         });
         
@@ -1885,25 +1997,115 @@
     document.getElementById("sendBtn").onclick = sendMessage;
     document.getElementById("messageInput").onkeypress = (e) => {
       if (e.key === 'Enter') sendMessage();
+      if (e.key === 'Escape' && editingMessageId) {
+        cancelEdit();
+      }
     };
+
+    function startEditMessage(conversationId, messageId, currentText) {
+      editingMessageId = messageId;
+      editingMessageText = currentText;
+      const input = document.getElementById("messageInput");
+      input.value = currentText;
+      input.focus();
+      input.select();
+      document.getElementById("sendBtn").textContent = "✓";
+      
+      // Add cancel button
+      const cancelBtn = document.createElement('button');
+      cancelBtn.id = 'cancelEditBtn';
+      cancelBtn.className = 'send-btn';
+      cancelBtn.style.background = '#666';
+      cancelBtn.textContent = '✕';
+      cancelBtn.onclick = cancelEdit;
+      document.querySelector('.message-input-wrapper').appendChild(cancelBtn);
+    }
+
+    function cancelEdit() {
+      editingMessageId = null;
+      editingMessageText = "";
+      document.getElementById("messageInput").value = "";
+      document.getElementById("sendBtn").textContent = "➤";
+      const cancelBtn = document.getElementById('cancelEditBtn');
+      if (cancelBtn) cancelBtn.remove();
+    }
+
+    async function deleteMessage(conversationId, messageId) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">Delete Message</div>
+          <div class="modal-content">
+            <p style="color:#b9bbbe;">Are you sure you want to delete this message?</p>
+            <p style="color:#72767d; font-size: 12px; margin-top: 8px;">Note: Admins can still see deleted messages.</p>
+          </div>
+          <div class="modal-buttons">
+            <button class="modal-btn cancel">Cancel</button>
+            <button class="modal-btn confirm">Delete</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      overlay.querySelector('.cancel').onclick = () => overlay.remove();
+      overlay.querySelector('.confirm').onclick = async () => {
+        try {
+          await updateDoc(doc(db, "dms", conversationId, "messages", messageId), {
+            deleted: true,
+            deletedAt: serverTimestamp()
+          });
+          overlay.remove();
+          showToast("Message deleted", "success");
+        } catch (error) {
+          showToast("Failed to delete message", "error");
+        }
+      };
+      overlay.onclick = (e) => {
+        if (e.target === overlay) overlay.remove();
+      };
+    }
 
     async function sendMessage() {
       const text = document.getElementById("messageInput").value.trim();
       if (!currentConversation || !text) return;
       const conv = conversations.get(currentConversation);
+      
       try {
-        await setDoc(doc(db, "dms", currentConversation), {
-          members: conv.members,
-          groupName: conv.groupName || null,
-          lastMessage: text,
-          lastMessageTime: serverTimestamp()
-        }, { merge: true });
-        await addDoc(collection(db, "dms", currentConversation, "messages"), {
-          from: auth.currentUser.displayName,
-          text,
-          createdAt: serverTimestamp()
-        });
-        document.getElementById("messageInput").value = "";
+        // Check if we're editing
+        if (editingMessageId) {
+          const messageRef = doc(db, "dms", currentConversation, "messages", editingMessageId);
+          const messageDoc = await getDoc(messageRef);
+          const originalText = messageDoc.data().originalText || messageDoc.data().text;
+          
+          await updateDoc(messageRef, {
+            text: text,
+            edited: true,
+            editedAt: serverTimestamp(),
+            originalText: originalText
+          });
+          
+          cancelEdit();
+          showToast("Message edited", "success");
+        } else {
+          // Normal send
+          await setDoc(doc(db, "dms", currentConversation), {
+            members: conv.members,
+            groupName: conv.groupName || null,
+            lastMessage: text,
+            lastMessageTime: serverTimestamp()
+          }, { merge: true });
+          
+          await addDoc(collection(db, "dms", currentConversation, "messages"), {
+            from: auth.currentUser.displayName,
+            text,
+            createdAt: serverTimestamp(),
+            deleted: false,
+            edited: false
+          });
+          
+          document.getElementById("messageInput").value = "";
+        }
         
         await markConversationAsRead(currentConversation);
       } catch (error) {
