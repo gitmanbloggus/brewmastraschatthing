@@ -1228,8 +1228,11 @@
       overlay.className = 'modal-overlay';
       overlay.innerHTML = `
         <div class="modal" style="max-width: 900px;">
-          <div class="modal-title">Messages: ${displayName}</div>
+          <div class="modal-title">Admin View: ${displayName}</div>
           <div class="modal-content">
+            <p style="color: #ff9933; font-size: 12px; margin-bottom: 10px; padding: 8px; background: #1a1a1a; border-radius: 4px;">
+              📋 Viewing all messages including deleted and edited ones
+            </p>
             <div id="adminMessagesList" style="max-height: 600px; overflow-y: auto; background: #0a0a0a; padding: 15px; border-radius: 8px;">
               <p style="color: #72767d; text-align: center;">Loading messages...</p>
             </div>
@@ -1279,7 +1282,7 @@
           
           // Show deleted status
           if (msgData.deleted) {
-            messageContent += `<div style="color: #ff6666; font-weight: 600; margin-bottom: 4px;">[DELETED MESSAGE]</div>`;
+            messageContent += `<div style="color: #ff6666; font-weight: 600; margin-bottom: 4px;">🗑️ [DELETED MESSAGE]</div>`;
             if (msgData.deletedAt) {
               const deletedDate = msgData.deletedAt.toDate();
               const deletedTime = deletedDate.toLocaleString('en-US', { 
@@ -1297,7 +1300,7 @@
           if (msgData.edited && msgData.originalText) {
             messageContent += `
               <div style="background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">ORIGINAL:</div>
+                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">📝 ORIGINAL:</div>
                 <div style="color: #b9bbbe;">${msgData.originalText}</div>
               </div>
             `;
@@ -1307,7 +1310,7 @@
           if (msgData.edited) {
             messageContent += `
               <div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">
-                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">EDITED:</div>
+                <div style="color: #ff9933; font-size: 11px; font-weight: 600; margin-bottom: 4px;">✏️ EDITED:</div>
                 <div style="color: #dcddde;">${msgData.text}</div>
               </div>
             `;
@@ -1819,7 +1822,8 @@
           const msgData = msgDoc.data();
           const msgTime = msgData.createdAt?.toMillis() || 0;
           
-          if (msgTime > lastReadTime && msgData.from !== currentUser) {
+          // Only count if: message is after last read, not from current user, and NOT deleted
+          if (msgTime > lastReadTime && msgData.from !== currentUser && !msgData.deleted) {
             unreadForConv++;
           }
         });
