@@ -5,14 +5,14 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, setDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 // 🔥 YOUR FIREBASE CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyCKEPD4fp4GSTv4lD1sKvIga9O8ImYsSHM",
-  authDomain: "tankajahariportal.firebaseapp.com",
-  projectId: "tankajahariportal",
-  storageBucket: "tankajahariportal.firebasestorage.app",
-  messagingSenderId: "547424748543",
-  appId: "1:547424748543:web:0ec55a74492ffac3b15dca"
-};
+ const firebaseConfig = {
+    apiKey: "AIzaSyALOLfNwEYHRm2BubSGyZvBzL71FNg9sBY",
+    authDomain: "the-b589b.firebaseapp.com",
+    projectId: "the-b589b",
+    storageBucket: "the-b589b.firebasestorage.app",
+    messagingSenderId: "882192152850",
+    appId: "1:882192152850:web:637a3c2e7459abcf555bcb"
+  };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth();
